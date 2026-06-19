@@ -5,6 +5,11 @@ const fileSchema=new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    folder:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'Folder',
+        default:null
+    },
     originalName:{
         type: String,
         required: true},
@@ -27,5 +32,8 @@ const fileSchema=new mongoose.Schema({
         type: Date,
         default: null},    
 },{timestamps:true});
-fileSchema.index({owner:1});
+fileSchema.index({
+    owner:1,
+    folder:1
+});
 module.exports=mongoose.model('File',fileSchema);
