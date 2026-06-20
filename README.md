@@ -1,196 +1,147 @@
-# Keeply ☁️
+# Keeply - Cloud Storage Platform
 
-Keeply is a cloud storage platform inspired by Google Drive.  
-It allows users to securely upload, store, download, and manage files using AWS S3 private storage.
+Keeply is a cloud storage platform inspired by Google Drive that allows users to securely manage files and folders with authentication, storage tracking, and trash management.
 
-## 🚀 Features
+## 🚀 Features Completed
 
-### Authentication
-- User Registration
-- User Login
-- Password Hashing using bcrypt
-- JWT Based Authentication
-- Protected APIs
+### Authentication System
 
-### Cloud Storage
-- AWS S3 Private Bucket Integration
-- Secure File Upload using Presigned URLs
-- Direct Client to S3 Upload Flow
-- Secure File Download using Temporary URLs
-- File Metadata Management
+* User registration
+* User login
+* JWT based authentication
+* Protected routes
+* Password hashing
 
-### File Management
-- Upload Files
-- Get User Files
-- Get Single File
-- Delete Files
-- Storage Usage Tracking
-- User Storage Limit Validation
+### File Management System
 
-### Trash System
-- Soft Delete Support
-- Trash Based File Removal
-- Automatic Cleanup using Cron Job
-- Permanent AWS S3 Object Deletion
+* Upload files
+* Store file metadata
+* User based file access
+* Storage limit validation
+* Soft delete files
+* Trash system
+* Automatic trash cleanup
+* Permanent file removal from storage
 
----
+### Folder Management System
+
+* Create folders
+* Create nested folders
+* Parent-child folder relationship
+* Prevent duplicate folders inside same location
+* Fetch folders by parent folder
+* Open folder and fetch:
+
+  * child folders
+  * files inside folder
+* Rename folders
+* Recursive folder delete
+* Move folders and all children to trash
+* Delete files inside deleted folders
+
+## 🗂 Folder Structure Logic
+
+Example:
+
+Projects
+
+```
+Projects
+ └── Keeply
+      └── Files
+```
+
+Deleting parent folder:
+
+```
+Delete Projects
+
+↓ Recursive Delete
+
+Projects → Trash
+Keeply → Trash
+Files → Trash
+```
+
+Trash cleaner permanently removes deleted data after retention period.
 
 ## 🛠 Tech Stack
 
-**Backend**
-- Node.js
-- Express.js
-- MongoDB
-- Mongoose
+### Backend
 
-**Authentication**
-- JWT
-- bcrypt
+* Node.js
+* Express.js
+* MongoDB
+* Mongoose
+* JWT Authentication
+* AWS S3 (storage integration)
+* REST APIs
 
-**Cloud**
-- AWS S3
-- AWS SDK v3
-- Presigned URLs
+## Database Models
 
-**Tools**
-- Node Cron
-- Dotenv
+### User
 
----
+* name
+* email
+* password
+* storageLimit
+* usedStorage
+* plan
 
-## 📁 Project Structure
+### File
 
-```bash
-server/
+* owner
+* folder
+* originalName
+* fileName
+* mimeType
+* size
+* s3Key
+* isDeleted
+* deletedAt
 
-├── config/
-│   └── s3 configuration
+### Folder
 
-├── controllers/
-│   ├── auth controller
-│   └── file controller
+* name
+* owner
+* parentFolder
+* isDeleted
+* deletedAt
 
-├── middleware/
-│   └── authentication middleware
+## API Modules
 
-├── models/
-│   ├── User Model
-│   └── File Model
+### Auth Routes
 
-├── routes/
-│   ├── auth routes
-│   └── file routes
+* Register user
+* Login user
 
-├── utils/
-│   ├── S3 utilities
-│   └── Trash cleaner
+### File Routes
 
-├── server.js
-└── package.json
-```
+* Upload file
+* Get files
+* Get single file
+* Delete file
 
----
+### Folder Routes
 
-## 🔐 Environment Variables
+* Create folder
+* Get folders
+* Get folder content
+* Rename folder
+* Delete folder
 
-Create a `.env` file using `.env.example`
+## Current Status
 
-```env
-PORT=
+Completed:
 
-MONGO_URI=
+* Authentication
+* File System
+* Folder System
 
-JWT_SECRET=
+Upcoming:
 
-AWS_ACCESS_KEY_ID=
-
-AWS_SECRET_ACCESS_KEY=
-
-AWS_REGION=
-
-AWS_BUCKET_NAME=
-```
-
----
-
-## 📤 Upload Flow
-
-```text
-User Request
-
- ↓
-
-Backend Authentication
-
- ↓
-
-Generate Presigned Upload URL
-
- ↓
-
-Client Uploads File Directly To S3
-
- ↓
-
-Save File Metadata In MongoDB
-```
-
----
-
-## 📥 Download Flow
-
-```text
-User Requests File
-
- ↓
-
-Get s3Key From MongoDB
-
- ↓
-
-Generate Temporary Download URL
-
- ↓
-
-Access File From AWS S3
-```
-
----
-
-## 🗑 Delete Flow
-
-```text
-User Deletes File
-
- ↓
-
-Move File To Trash
-
- ↓
-
-Cron Job Cleanup
-
- ↓
-
-Delete File From AWS S3
-
- ↓
-
-Remove Metadata From MongoDB
-```
-
----
-
-## Upcoming Features
-
-- Folder System
-- File Sharing
-- Subscription Plans
-- Frontend Dashboard
-- Deployment
-
----
-
-## Status
-
-Backend Core Storage Engine Completed ✅
+* File move between folders
+* File sharing
+* Search functionality
+* Frontend integration
+* Deployment
