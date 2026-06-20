@@ -420,6 +420,188 @@ module.exports.renameFolder = async (req, res) => {
 
 // DELETE WILL COME NEXT
 
-module.exports.deleteFolder = async(req,res)=>{
+// helper function for recursive delete
+
+const deleteRecursive = async (folderId, userId) => {
+
+
+   // find child folders
+
+   const childFolders = await Folder.find({
+
+      parentFolder: folderId,
+
+      owner: userId,
+
+      isDeleted: false
+
+   });
+
+
+
+   // delete children first
+
+   for (const child of childFolders) {
+
+
+      await deleteRecursive(
+
+         child._id,
+
+         userId
+
+      );
+
+
+   }
+
+
+
+   // delete files inside current folder
+
+   await File.updateMany(
+
+      {
+
+         folder: folderId,
+
+         owner: userId,
+
+         isDeleted: false
+
+      },
+
+
+      {
+
+         isDeleted: true,
+
+         deletedAt: new Date()
+
+      }
+
+   );
+
+
+
+
+   // delete current folder
+
+   await Folder.updateOne(
+      {
+         _id: folderId,
+         owner: userId,
+         isDeleted: false
+      },
+      {
+         isDeleted: true,
+         deletedAt: new Date()
+      }
+   );
+
+};
+
+
+
+
+
+
+module.exports.deleteFolder = async (req, res) => {
+
+
+   try {
+
+
+      const folderId = req.params.id;
+
+
+
+      if (!mongoose.Types.ObjectId.isValid(folderId)) {
+
+
+         return res.status(400).json({
+
+            message: "Invalid folder ID"
+
+         });
+
+
+      }
+
+
+
+
+
+      const folder = await Folder.findOne({
+
+         _id: folderId,
+
+         owner: req.user._id,
+
+         isDeleted: false
+
+      });
+
+
+
+
+
+      if (!folder) {
+
+
+         return res.status(404).json({
+
+            message: "Folder not found"
+
+         });
+
+
+      }
+
+
+
+
+      await deleteRecursive(
+
+         folderId,
+
+         req.user._id
+
+      );
+
+
+
+
+
+      return res.status(200).json({
+
+
+         message: "Folder moved to trash successfully"
+
+
+      });
+
+
+
+
+   }
+
+
+   catch (err) {
+
+
+      console.log("Delete folder error:", err);
+
+
+
+      return res.status(500).json({
+
+         message: "Server error"
+
+      });
+
+
+   }
+
 
 };

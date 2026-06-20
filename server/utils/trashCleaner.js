@@ -1,6 +1,5 @@
 const File = require("../models/File");
-
-
+const folder = require("../models/Folder");
 const {
     deleteFromS3
 } = require("./s3Utils");
@@ -68,8 +67,22 @@ const cleanTrash = async () => {
             }
 
         }
+        //folder
+        await folder.deleteMany({
+
+            isDeleted: true,
 
 
+            deletedAt: {
+
+                $lte: tenDaysAgo
+
+            }
+
+        });
+
+
+        console.log("Old folders deleted");
 
     }
 
