@@ -1,147 +1,228 @@
-# Keeply - Cloud Storage Platform
+# Keeply ☁️
 
-Keeply is a cloud storage platform inspired by Google Drive that allows users to securely manage files and folders with authentication, storage tracking, and trash management.
+Keeply is a cloud storage platform inspired by Google Drive.
+It allows users to securely upload, store, organize, download, and manage files using AWS S3 private storage.
 
-## 🚀 Features Completed
+## 🚀 Features
 
-### Authentication System
+### Authentication
 
-* User registration
-* User login
-* JWT based authentication
-* Protected routes
-* Password hashing
+* User Registration
+* User Login
+* Password Hashing using bcrypt
+* JWT Based Authentication
+* Protected APIs
 
-### File Management System
+### Cloud Storage
 
-* Upload files
-* Store file metadata
-* User based file access
-* Storage limit validation
-* Soft delete files
-* Trash system
-* Automatic trash cleanup
-* Permanent file removal from storage
+* AWS S3 Private Bucket Integration
+* Secure File Upload using Presigned URLs
+* Direct Client to S3 Upload Flow
+* Secure File Download using Temporary URLs
+* File Metadata Management
 
-### Folder Management System
+### File Management
 
-* Create folders
-* Create nested folders
-* Parent-child folder relationship
-* Prevent duplicate folders inside same location
-* Fetch folders by parent folder
-* Open folder and fetch:
+* Upload Files
+* Get User Files
+* Get Single File
+* Delete Files
+* Storage Usage Tracking
+* User Storage Limit Validation
+* Folder Based File Organization
 
-  * child folders
-  * files inside folder
-* Rename folders
-* Recursive folder delete
-* Move folders and all children to trash
-* Delete files inside deleted folders
+### Folder Management
 
-## 🗂 Folder Structure Logic
+* Create Root Folders
+* Create Nested Folders
+* Parent-Child Folder Structure
+* Prevent Duplicate Folder Creation
+* Get Folder Contents
 
-Example:
+  * Child Folders
+  * Files
+* Rename Folders
+* Recursive Folder Delete
+* Move Folder Tree To Trash
 
-Projects
+### Trash System
 
-```
-Projects
- └── Keeply
-      └── Files
-```
+* Soft Delete Support
+* Trash Based File & Folder Removal
+* Recursive Folder Cleanup
+* Automatic Cleanup using Cron Job
+* Permanent AWS S3 Object Deletion
 
-Deleting parent folder:
-
-```
-Delete Projects
-
-↓ Recursive Delete
-
-Projects → Trash
-Keeply → Trash
-Files → Trash
-```
-
-Trash cleaner permanently removes deleted data after retention period.
+---
 
 ## 🛠 Tech Stack
 
-### Backend
+**Backend**
 
 * Node.js
 * Express.js
 * MongoDB
 * Mongoose
-* JWT Authentication
-* AWS S3 (storage integration)
-* REST APIs
 
-## Database Models
+**Authentication**
 
-### User
+* JWT
+* bcrypt
 
-* name
-* email
-* password
-* storageLimit
-* usedStorage
-* plan
+**Cloud**
 
-### File
+* AWS S3
+* AWS SDK v3
+* Presigned URLs
 
-* owner
-* folder
-* originalName
-* fileName
-* mimeType
-* size
-* s3Key
-* isDeleted
-* deletedAt
+**Tools**
 
-### Folder
+* Node Cron
+* Dotenv
 
-* name
-* owner
-* parentFolder
-* isDeleted
-* deletedAt
+---
 
-## API Modules
+## 📁 Project Structure
 
-### Auth Routes
+```bash
+server/
 
-* Register user
-* Login user
+├── config/
+│   └── s3 configuration
 
-### File Routes
+├── controllers/
+│   ├── auth controller
+│   ├── file controller
+│   └── folder controller
 
-* Upload file
-* Get files
-* Get single file
-* Delete file
+├── middleware/
+│   └── authentication middleware
 
-### Folder Routes
+├── models/
+│   ├── User Model
+│   ├── File Model
+│   └── Folder Model
 
-* Create folder
-* Get folders
-* Get folder content
-* Rename folder
-* Delete folder
+├── routes/
+│   ├── auth routes
+│   ├── file routes
+│   └── folder routes
 
-## Current Status
+├── utils/
+│   ├── S3 utilities
+│   └── Trash cleaner
 
-Completed:
+├── server.js
+└── package.json
+```
 
-* Authentication
-* File System
-* Folder System
+---
 
-Upcoming:
+## 🔐 Environment Variables
 
-* File move between folders
-* File sharing
-* Search functionality
-* Frontend integration
+Create a `.env` file using `.env.example`
+
+```env
+PORT=
+
+MONGO_URI=
+
+JWT_SECRET=
+
+AWS_ACCESS_KEY_ID=
+
+AWS_SECRET_ACCESS_KEY=
+
+AWS_REGION=
+
+AWS_BUCKET_NAME=
+```
+
+---
+
+## 📤 Upload Flow
+
+```text
+User Request
+
+ ↓
+
+Backend Authentication
+
+ ↓
+
+Generate Presigned Upload URL
+
+ ↓
+
+Client Uploads File Directly To S3
+
+ ↓
+
+Save File Metadata In MongoDB
+```
+
+---
+
+## 📁 Folder Delete Flow
+
+```text
+User Deletes Folder
+
+ ↓
+
+Find Child Folders Recursively
+
+ ↓
+
+Move Child Folders To Trash
+
+ ↓
+
+Move Files Inside Folders To Trash
+
+ ↓
+
+Trash Cleanup Removes Data Permanently
+```
+
+---
+
+## 🗑 Trash Cleanup Flow
+
+```text
+Deleted File / Folder
+
+ ↓
+
+Retention Period Ends
+
+ ↓
+
+Cron Job Runs
+
+ ↓
+
+Delete File From AWS S3
+
+ ↓
+
+Remove Metadata From MongoDB
+```
+
+---
+
+## Upcoming Features
+
+* File Sharing
+* Search Functionality
+* Subscription Plans
+* Frontend Dashboard
 * Deployment
+
+---
+
+## Status
+
+Backend Storage Engine Completed ✅
+Folder Management System Completed ✅
