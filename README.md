@@ -1,84 +1,96 @@
 # Keeply ☁️
 
-Keeply is a cloud storage platform inspired by Google Drive.
-It allows users to securely upload, store, organize, download, and manage files using AWS S3 private storage.
+Keeply is a secure cloud storage platform inspired by Google Drive.  
+It allows users to upload, organize, share, and manage files using AWS S3 private storage with secure backend architecture.
+
+---
 
 ## 🚀 Features
 
-### Authentication
+### 🔐 Authentication
+- User Registration
+- User Login
+- Password Hashing using bcrypt
+- JWT Based Authentication
+- Protected APIs
 
-* User Registration
-* User Login
-* Password Hashing using bcrypt
-* JWT Based Authentication
-* Protected APIs
+---
 
-### Cloud Storage
+### ☁️ Cloud Storage
+- AWS S3 Private Bucket Integration
+- Secure File Upload using Presigned URLs
+- Direct Client to S3 Upload Flow
+- Secure File Download using Temporary URLs
+- File Metadata Management
 
-* AWS S3 Private Bucket Integration
-* Secure File Upload using Presigned URLs
-* Direct Client to S3 Upload Flow
-* Secure File Download using Temporary URLs
-* File Metadata Management
+---
 
-### File Management
+### 📁 File Management
+- Upload Files
+- Get All User Files
+- Get Single File
+- Delete Files
+- Storage Usage Tracking
+- User Storage Limit Validation
 
-* Upload Files
-* Get User Files
-* Get Single File
-* Delete Files
-* Storage Usage Tracking
-* User Storage Limit Validation
-* Folder Based File Organization
+---
 
-### Folder Management
+### 📂 Folder Management
+- Create Folders
+- Nested Folder Structure
+- Parent-Child Folder Relationship
+- Get Folder Contents
+- Folder Based File Organization
+- Recursive Folder Delete
 
-* Create Root Folders
-* Create Nested Folders
-* Parent-Child Folder Structure
-* Prevent Duplicate Folder Creation
-* Get Folder Contents
+---
 
-  * Child Folders
-  * Files
-* Rename Folders
-* Recursive Folder Delete
-* Move Folder Tree To Trash
+### 🔗 File Sharing
+- Generate Secure Share Links
+- Random Crypto Token Based Sharing
+- Public File Access Using Share Token
+- Duplicate Share Link Prevention
+- Secure Temporary Download URLs
 
-### Trash System
+---
 
-* Soft Delete Support
-* Trash Based File & Folder Removal
-* Recursive Folder Cleanup
-* Automatic Cleanup using Cron Job
-* Permanent AWS S3 Object Deletion
+### 🔍 Search
+- Search Files
+- Search Folders
+- User Specific Search Results
+- Case Insensitive Search
+- Partial Name Matching
+
+---
+
+### 🗑 Trash System
+- Soft Delete Support
+- Trash Based File Removal
+- Automatic Cleanup using Cron Job
+- Permanent AWS S3 Object Deletion
 
 ---
 
 ## 🛠 Tech Stack
 
-**Backend**
+### Backend
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
 
-* Node.js
-* Express.js
-* MongoDB
-* Mongoose
+### Authentication
+- JWT
+- bcrypt
 
-**Authentication**
+### Cloud Storage
+- AWS S3
+- AWS SDK v3
+- Presigned URLs
 
-* JWT
-* bcrypt
-
-**Cloud**
-
-* AWS S3
-* AWS SDK v3
-* Presigned URLs
-
-**Tools**
-
-* Node Cron
-* Dotenv
+### Tools
+- Node Cron
+- Dotenv
 
 ---
 
@@ -88,29 +100,34 @@ It allows users to securely upload, store, organize, download, and manage files 
 server/
 
 ├── config/
-│   └── s3 configuration
+│   └── AWS S3 Configuration
 
 ├── controllers/
-│   ├── auth controller
-│   ├── file controller
-│   └── folder controller
+│   ├── Auth Controller
+│   ├── File Controller
+│   ├── Folder Controller
+│   ├── Share Controller
+│   └── Search Controller
 
 ├── middleware/
-│   └── authentication middleware
+│   └── Authentication Middleware
 
 ├── models/
 │   ├── User Model
 │   ├── File Model
-│   └── Folder Model
+│   ├── Folder Model
+│   └── Share Model
 
 ├── routes/
-│   ├── auth routes
-│   ├── file routes
-│   └── folder routes
+│   ├── Auth Routes
+│   ├── File Routes
+│   ├── Folder Routes
+│   ├── Share Routes
+│   └── Search Routes
 
 ├── utils/
-│   ├── S3 utilities
-│   └── Trash cleaner
+│   ├── S3 Utilities
+│   └── Trash Cleaner
 
 ├── server.js
 └── package.json
@@ -120,7 +137,7 @@ server/
 
 ## 🔐 Environment Variables
 
-Create a `.env` file using `.env.example`
+Create a `.env` file:
 
 ```env
 PORT=
@@ -136,6 +153,8 @@ AWS_SECRET_ACCESS_KEY=
 AWS_REGION=
 
 AWS_BUCKET_NAME=
+
+FRONTEND_URL=
 ```
 
 ---
@@ -143,86 +162,114 @@ AWS_BUCKET_NAME=
 ## 📤 Upload Flow
 
 ```text
-User Request
+User Selects File
 
- ↓
+        ↓
 
 Backend Authentication
 
- ↓
+        ↓
 
-Generate Presigned Upload URL
+Generate AWS Presigned Upload URL
 
- ↓
+        ↓
 
 Client Uploads File Directly To S3
 
- ↓
+        ↓
 
 Save File Metadata In MongoDB
 ```
 
 ---
 
-## 📁 Folder Delete Flow
+## 📥 Download Flow
 
 ```text
-User Deletes Folder
+User Requests File
 
- ↓
+        ↓
 
-Find Child Folders Recursively
+Validate Ownership
 
- ↓
+        ↓
 
-Move Child Folders To Trash
+Fetch s3Key From Database
 
- ↓
+        ↓
 
-Move Files Inside Folders To Trash
+Generate Temporary AWS URL
 
- ↓
+        ↓
 
-Trash Cleanup Removes Data Permanently
+Download File Securely
 ```
 
 ---
 
-## 🗑 Trash Cleanup Flow
+## 🔗 Share Flow
 
 ```text
-Deleted File / Folder
+User Creates Share Link
 
- ↓
+        ↓
 
-Retention Period Ends
+Generate Secure Token
 
- ↓
+        ↓
 
-Cron Job Runs
+Save Token With File Reference
 
- ↓
+        ↓
 
-Delete File From AWS S3
+Public User Opens Link
 
- ↓
+        ↓
 
-Remove Metadata From MongoDB
+Generate Temporary Download URL
+
+        ↓
+
+Access Shared File
+```
+
+---
+
+## 🗑 Delete Flow
+
+```text
+Delete Request
+
+        ↓
+
+Move File / Folder To Trash
+
+        ↓
+
+Cron Job Cleanup
+
+        ↓
+
+Delete From AWS S3
+
+        ↓
+
+Remove Metadata
 ```
 
 ---
 
 ## Upcoming Features
 
-* File Sharing
-* Search Functionality
-* Subscription Plans
-* Frontend Dashboard
-* Deployment
+- Frontend Integration
+- Payment Gateway
+- Subscription Plans
+- Deployment
 
 ---
 
 ## Status
 
-Backend Storage Engine Completed ✅
-Folder Management System Completed ✅
+Backend V1 Completed ✅
+
+Core Storage Engine Completed 🚀
