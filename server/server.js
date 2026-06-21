@@ -4,6 +4,8 @@ const port = process.env.PORT || 3000;
 const authRoutes = require('./routes/auth');
 const fileRoutes = require('./routes/file');
 const folderRoutes=require('./routes/folder');
+const shareRoutes=require('./routes/shareRoutes');
+const searchRoutes = require("./routes/searchRoute");
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -11,7 +13,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/folders', folderRoutes);
-
+app.use('/api/share', shareRoutes);
+app.use("/api/search", searchRoutes);
 
 const cron = require("node-cron");
 const cleanTrash = require("./utils/trashCleaner");
