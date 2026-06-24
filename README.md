@@ -1,5 +1,5 @@
 # Keeply ☁️
-# Keeply ☁️
+
 
 ![Progress](https://img.shields.io/badge/Progress-Backend%20Complete-green)
 ![Frontend](https://img.shields.io/badge/Frontend-In%20Progress-yellow)
