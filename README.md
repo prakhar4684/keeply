@@ -1,4 +1,10 @@
 # Keeply ☁️
+# Keeply ☁️
+
+![Progress](https://img.shields.io/badge/Progress-Backend%20Complete-green)
+![Frontend](https://img.shields.io/badge/Frontend-In%20Progress-yellow)
+![Status](https://img.shields.io/badge/Status-Active-blue)
+
 
 Keeply is a secure full-stack cloud storage platform inspired by Google Drive.  
 It allows users to upload, organize, share, and manage files using secure authentication, AWS S3 private storage, and scalable backend architecture.
