@@ -1,7 +1,7 @@
 # Keeply ☁️
 
-Keeply is a secure cloud storage platform inspired by Google Drive.  
-It allows users to upload, organize, share, and manage files using AWS S3 private storage with secure backend architecture.
+Keeply is a secure full-stack cloud storage platform inspired by Google Drive.  
+It allows users to upload, organize, share, and manage files using secure authentication, AWS S3 private storage, and scalable backend architecture.
 
 ---
 
@@ -13,6 +13,31 @@ It allows users to upload, organize, share, and manage files using AWS S3 privat
 - Password Hashing using bcrypt
 - JWT Based Authentication
 - Protected APIs
+- Persistent Login Sessions
+- React Context Based Authentication State
+- Public & Private Route Protection
+- Secure Logout Flow
+
+---
+
+### 👤 User Profile
+- Dynamic User Profile
+- User Information Management
+- Current Plan Display
+- Storage Usage Display
+- Profile Dropdown
+- Authentication Based UI Updates
+
+---
+
+### 📊 Dashboard
+- Real User Dashboard
+- Storage Overview
+- Total Files Count
+- Total Folders Count
+- User Storage Tracking
+- Current Plan Information
+- Protected Dashboard Statistics API
 
 ---
 
@@ -73,6 +98,14 @@ It allows users to upload, organize, share, and manage files using AWS S3 privat
 
 ## 🛠 Tech Stack
 
+### Frontend
+- React.js
+- React Router DOM
+- Context API
+- Axios
+- Tailwind CSS
+- Framer Motion
+
 ### Backend
 - Node.js
 - Express.js
@@ -91,19 +124,50 @@ It allows users to upload, organize, share, and manage files using AWS S3 privat
 ### Tools
 - Node Cron
 - Dotenv
+- Git
 
 ---
 
 ## 📁 Project Structure
 
 ```bash
-server/
+Keeply/
 
+├── client/
+│
+│   ├── src/
+│   │
+│   ├── api/
+│   │   └── Axios Client
+│   │
+│   ├── components/
+│   │   ├── Dashboard Components
+│   │   ├── Profile Menu
+│   │   └── UI Components
+│   │
+│   ├── context/
+│   │   └── Auth Context
+│   │
+│   ├── routes/
+│   │   ├── Protected Routes
+│   │   └── Public Routes
+│   │
+│   ├── services/
+│   │   ├── Auth Service
+│   │   └── Dashboard Service
+│   │
+│   └── App.jsx
+│
+
+
+├── server/
+│
 ├── config/
 │   └── AWS S3 Configuration
 
 ├── controllers/
 │   ├── Auth Controller
+│   ├── Dashboard Controller
 │   ├── File Controller
 │   ├── Folder Controller
 │   ├── Share Controller
@@ -120,6 +184,7 @@ server/
 
 ├── routes/
 │   ├── Auth Routes
+│   ├── Dashboard Routes
 │   ├── File Routes
 │   ├── Folder Routes
 │   ├── Share Routes
@@ -166,19 +231,31 @@ User Selects File
 
         ↓
 
+Request Presigned Upload URL
+
+        ↓
+
 Backend Authentication
 
         ↓
 
-Generate AWS Presigned Upload URL
+Validate Storage Limit
 
         ↓
 
-Client Uploads File Directly To S3
+Generate AWS Presigned URL
+
+        ↓
+
+Client Uploads Directly To S3
 
         ↓
 
 Save File Metadata In MongoDB
+
+        ↓
+
+Update User Storage
 ```
 
 ---
@@ -259,17 +336,40 @@ Remove Metadata
 
 ---
 
-## Upcoming Features
+## Current Status
 
-- Frontend Integration
+### Completed ✅
+
+- Backend Architecture
+- Authentication System
+- JWT Authorization
+- Frontend UI Setup
+- Axios API Layer
+- Auth Context Integration
+- Protected Routing
+- Dynamic User Profile
+- Dashboard Statistics API
+- Real Dashboard Overview
+
+
+### In Progress 🚧
+
+- Nested Folder Integration
+- File Listing Integration
+- AWS S3 Upload Connection
+
+
+### Upcoming 🚀
+
 - Payment Gateway
 - Subscription Plans
 - Deployment
+- Advanced Sharing
 
 ---
 
 ## Status
 
-Backend V1 Completed ✅
+Full Stack Integration In Progress 🚀
 
-Core Storage Engine Completed 🚀
+Core Authentication & Dashboard Engine Completed ✅
