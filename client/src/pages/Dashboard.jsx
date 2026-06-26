@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Toaster, toast } from "react-hot-toast";
 import {
   Upload, FolderPlus, Grid, List, ChevronDown,
-  Bell, LayoutGrid, Rows3, X, Plus, Menu
+  Bell, LayoutGrid, Rows3, X, Plus, Menu,
+  ArrowLeft
 } from 'lucide-react'
-import  {getDashboardStats }
+import { getDashboardStats }
   from "../services/dashboardService";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from '../components/Sidebar'
@@ -13,15 +15,27 @@ import Breadcrumb from '../components/Breadcrumb'
 import FolderCard from '../components/FolderCard'
 import FileCard from '../components/FileCard'
 import UploadModal from '../components/UploadModal'
+import RenameFolderModal from '../components/RenameFolderModal'
+import DeleteFolderModal from '../components/DeleteFolderModal'
+
 import ShareModal from '../components/ShareModal'
 import EmptyState from '../components/EmptyState'
 import UserMenu from '../components/UserMenu'
 import { DashboardSkeleton } from '../components/Loader'
-
+import {
+  getFolders,
+  createFolder,
+}
+  from "../services/folderService";
 import {
   dummyFiles,
-  dummyFolders,
+
 } from '../data/dummyData'
+
+
+
+
+
 
 
 // ─── New Folder Modal ────────────────────────────────────────────
@@ -135,13 +149,72 @@ export default function Dashboard() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [shareModal, setShareModal] = useState({ open: false, file: null })
   const [newFolderOpen, setNewFolderOpen] = useState(false)
-  const [folders, setFolders] = useState(dummyFolders)
+  const [renameModal, setRenameModal] = useState({
+    open: false,
+    folder: null
+  });
+
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    folder: null
+  });
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [files] = useState(dummyFiles)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-const [loading,setLoading] = useState(true)
+
+
+  const [folders, setFolders]
+    =
+    useState([])
+  const [
+    currentFolder,
+    setCurrentFolder
+  ]
+    =
+    useState(null)
+  const [loading, setLoading] = useState(true)
   const { user } = useAuth()
+  const [folderPath, setFolderPath] =
+    useState([]);
 
   const [stats, setStats] = useState(null);
+
+  const handleBackFolder = () => {
+
+
+    if (folderPath.length === 0)
+      return;
+
+
+    const newPath =
+      folderPath.slice(
+        0,
+        -1
+      );
+
+
+    setFolderPath(
+      newPath
+    );
+
+
+    const previousFolder =
+      newPath[
+      newPath.length - 1
+      ];
+
+
+    setCurrentFolder(
+      previousFolder
+        ?
+        previousFolder.id
+        :
+        null
+    );
+
+
+  };
+
 
 
   useEffect(() => {
@@ -183,25 +256,120 @@ const [loading,setLoading] = useState(true)
     loadStats();
 
 
-}, []);
-  // TODO: connect backend API - fetch from /api/folders and /api/files
-  const handleCreateFolder = (data) => {
-    const newFolder = {
-      id: `folder_${Date.now()}`,
-      name: data.name,
-      color: data.color,
-      parentId: null,
-      filesCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    setFolders(prev => [newFolder, ...prev])
-  }
+  }, []);
+
+  //get folder useEffect
+
+  useEffect(() => {
+
+
+    const loadFolders
+      =
+      async () => {
+
+
+        try {
+
+
+          const data
+            =
+
+
+            await getFolders(
+              currentFolder
+            );
+          console.log(
+            "CURRENT FOLDER:",
+            currentFolder
+          );
+
+          console.log(
+            "FOLDERS RESPONSE:",
+            data
+          );
+
+
+          setFolders(
+            data
+          );
+
+
+
+        }
+        catch (error) {
+
+
+          console.log(
+            error
+          );
+
+
+        }
+
+
+      }
+
+
+
+    loadFolders()
+
+
+
+  },
+    [
+      currentFolder
+    ]);
+
+  const handleCreateFolder =
+    async (data) => {
+
+
+      try {
+
+
+        const folder =
+          await createFolder({
+
+            name: data.name,
+
+            parentId: currentFolder
+
+          });
+
+
+
+        setFolders(
+          prev => [
+            folder,
+            ...prev
+          ]
+        );
+
+
+
+      }
+      catch (error) {
+
+
+        console.log(
+          error
+        );
+
+
+      }
+
+
+    };
 
   // TODO: connect backend API - DELETE /api/folders/:id
-  const handleFolderDelete = (folder) => {
-    setFolders(prev => prev.filter(f => f.id !== folder.id))
-  }
+  const handleFolderDelete = async (folder) => {
+
+    setDeleteModal({
+      open: true,
+      folder
+    });
+
+  };
 
   // TODO: connect backend API - POST /api/folders/:id/share
   const handleFolderShare = (folder) => {
@@ -216,6 +384,15 @@ const [loading,setLoading] = useState(true)
       },
     })
   }
+
+
+  const handleFolderRename = async (folder) => {
+    console.log("Rename Clicked", folder);
+    setRenameModal({
+      open: true,
+      folder
+    });
+  };
 
   // TODO: connect backend API - GET /api/files/:id/download (presigned URL)
   const handleFileDownload = (file) => {
@@ -242,9 +419,16 @@ const [loading,setLoading] = useState(true)
     ? files.filter(f => f.isShared)
     : files
 
-  const breadcrumbItems = activeSection === 'home' ? [] : [
-    { id: activeSection, name: activeSection === 'recent' ? 'Recent' : 'Shared with me', path: `/dashboard?view=${activeSection}` }
-  ]
+  const breadcrumbItems =
+    [
+      {
+        id: null,
+        name: "My Drive"
+      },
+
+      ...folderPath
+
+    ];
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -331,8 +515,82 @@ const [loading,setLoading] = useState(true)
 
             {/* Breadcrumb + view toggle */}
             <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-              <div>
-                <Breadcrumb items={breadcrumbItems} />
+
+
+              <div className="flex items-center gap-2">
+
+
+                {
+                  folderPath.length > 0 && (
+
+                    <button
+
+                      onClick={handleBackFolder}
+
+                      className="
+          p-2
+          rounded-lg
+          hover:bg-gray-100
+          text-gray-500
+          hover:text-gray-800
+          transition
+          "
+
+                    >
+
+                      <ArrowLeft size={18} />
+
+                    </button>
+
+                  )
+                }
+
+
+
+                <Breadcrumb
+
+                  items={breadcrumbItems}
+
+                  onNavigate={(folder, index) => {
+
+
+                    if (folder.id === null) {
+
+
+                      setFolderPath([]);
+
+                      setCurrentFolder(null);
+
+                      return;
+
+
+                    }
+
+
+
+                    setFolderPath(
+
+                      folderPath.slice(
+                        0,
+                        index
+                      )
+
+                    );
+
+
+
+                    setCurrentFolder(
+
+                      folder.id
+
+                    );
+
+
+                  }}
+
+                />
+
+
               </div>
 
               <div className="flex items-center gap-2">
@@ -404,7 +662,11 @@ const [loading,setLoading] = useState(true)
                     </div>
 
                     {folders.length === 0 ? (
-                      <EmptyState type="files" onAction={() => setNewFolderOpen(true)} actionLabel="Create Folder" />
+                      <EmptyState
+                        type="files"
+                        onCreateFolder={() => setNewFolderOpen(true)}
+                        onUploadFile={() => setUploadOpen(true)}
+                      />
                     ) : viewMode === 'grid' ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
                         {/* New folder quick-add card */}
@@ -417,23 +679,30 @@ const [loading,setLoading] = useState(true)
                           <Plus size={22} />
                           <span className="text-xs font-semibold">New Folder</span>
                         </motion.button>
-                        {folders.map((folder, i) => (
-                          <motion.div
-                            key={folder.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: i * 0.04 }}
-                          >
-                            <FolderCard
-                              folder={folder}
-                              viewMode="grid"
-                              onOpen={(f) => alert(`Opening folder: ${f.name}`)}
-                              onRename={(f) => alert(`Rename: ${f.name}`)}
-                              onShare={handleFolderShare}
-                              onDelete={handleFolderDelete}
-                            />
-                          </motion.div>
-                        ))}
+                        {folders.map((folder, i) => {
+                          console.log("Folder", folder);
+
+                          return (
+                            <motion.div
+                              key={folder.id || i}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: i * 0.04 }}
+                            >
+                              <FolderCard
+                                folder={folder}
+                                viewMode="grid"
+                                onOpen={(f) => {
+                                  setFolderPath(prev => [...prev, f]);
+                                  setCurrentFolder(f.id);
+                                }}
+                                onRename={handleFolderRename}
+                                onShare={handleFolderShare}
+                                onDelete={handleFolderDelete}
+                              />
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
@@ -447,9 +716,29 @@ const [loading,setLoading] = useState(true)
                             <FolderCard
                               folder={folder}
                               viewMode="list"
-                              onOpen={(f) => alert(`Opening folder: ${f.name}`)}
-                              onRename={(f) => alert(`Rename: ${f.name}`)}
+
+                              onOpen={(f) => {
+
+
+                                setFolderPath(
+                                  prev => [
+                                    ...prev,
+                                    f
+                                  ]
+                                )
+
+
+                                setCurrentFolder(
+                                  f.id
+                                )
+
+
+                              }}
+
+                              onRename={handleFolderRename}
+
                               onShare={handleFolderShare}
+
                               onDelete={handleFolderDelete}
                             />
                           </motion.div>
@@ -464,25 +753,51 @@ const [loading,setLoading] = useState(true)
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
                       <span className="w-2 h-2 bg-blue-400 rounded-full" />
-                      {activeSection === 'shared' ? 'Shared Files' : 'Files'}
-                      <span className="text-gray-400 font-normal">({filteredFiles.length})</span>
+                      {activeSection === "shared" ? "Shared Files" : "Files"}
+                      <span className="text-gray-400 font-normal">
+                        ({filteredFiles.length})
+                      </span>
                     </h2>
+
                     <button
                       onClick={() => setUploadOpen(true)}
                       className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
                     >
-                      <Upload size={13} /> Upload
+                      <Upload size={13} />
+                      Upload
                     </button>
                   </div>
 
                   {filteredFiles.length === 0 ? (
                     <EmptyState
-                      type={activeSection === 'shared' ? 'shared' : 'files'}
-                      onAction={activeSection !== 'shared' ? () => setUploadOpen(true) : undefined}
-                      actionLabel="Upload File"
+                      type={activeSection === "shared" ? "shared" : "files"}
+                      onCreateFolder={() => setNewFolderOpen(true)}
+                      onUploadFile={() => setUploadOpen(true)}
                     />
-                  ) : viewMode === 'grid' ? (
+                  ) : viewMode === "grid" ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+
+                      {/* Upload File Card */}
+                      <motion.button
+                        whileHover={{
+                          y: -2,
+                          boxShadow: "0 8px 24px rgba(16,185,129,.10)",
+                        }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setUploadOpen(true)}
+                        className="bg-white border-2 border-dashed border-gray-200 hover:border-emerald-300 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-emerald-600 transition-all min-h-[150px] cursor-pointer"
+                      >
+                        <Upload size={24} />
+
+                        <span className="text-sm font-semibold">
+                          New File
+                        </span>
+
+                        <span className="text-xs text-gray-400">
+                          Upload anything
+                        </span>
+                      </motion.button>
+
                       {filteredFiles.map((file, i) => (
                         <motion.div
                           key={file.id}
@@ -502,13 +817,22 @@ const [loading,setLoading] = useState(true)
                     </div>
                   ) : (
                     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                      {/* List header */}
+
+                      {/* List Header */}
                       <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
                         <div className="w-9 flex-shrink-0" />
-                        <span className="flex-1 text-xs font-semibold text-gray-500">Name</span>
-                        <span className="text-xs font-semibold text-gray-500 hidden sm:block w-24 text-right">Modified</span>
+
+                        <span className="flex-1 text-xs font-semibold text-gray-500">
+                          Name
+                        </span>
+
+                        <span className="text-xs font-semibold text-gray-500 hidden sm:block w-24 text-right">
+                          Modified
+                        </span>
+
                         <span className="text-xs font-semibold text-gray-500 w-8" />
                       </div>
+
                       {filteredFiles.map((file, i) => (
                         <motion.div
                           key={file.id}
@@ -630,6 +954,37 @@ const [loading,setLoading] = useState(true)
         onClose={() => setNewFolderOpen(false)}
         onCreate={handleCreateFolder}
       />
+      <RenameFolderModal
+        isOpen={renameModal.open}
+        folder={renameModal.folder}
+        folders={folders}
+        setFolders={setFolders}
+        onClose={() =>
+          setRenameModal({
+            open: false,
+            folder: null
+          })
+        }
+      />
+
+      <DeleteFolderModal
+        isOpen={deleteModal.open}
+        folder={deleteModal.folder}
+        folders={folders}
+        setFolders={setFolders}
+        currentFolder={currentFolder}
+        setCurrentFolder={setCurrentFolder}
+        folderPath={folderPath}
+        setFolderPath={setFolderPath}
+        onClose={() =>
+          setDeleteModal({
+            open: false,
+            folder: null
+          })
+        }
+      />
+
+      <Toaster position="top-right" />
     </div>
   )
 }

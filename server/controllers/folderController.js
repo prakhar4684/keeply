@@ -10,7 +10,7 @@ module.exports.createFolder = async (req, res) => {
 
    try {
 
-      const { name, parentFolderId } = req.body;
+      const { name, parentId } = req.body;
 
 
       if (!name) {
@@ -24,11 +24,11 @@ module.exports.createFolder = async (req, res) => {
 
       // parent folder validation
 
-      if (parentFolderId) {
+      if (parentId) {
 
          const parentFolder = await Folder.findOne({
 
-            _id: parentFolderId,
+            _id: parentId,
 
             owner: req.user._id,
 
@@ -57,7 +57,7 @@ module.exports.createFolder = async (req, res) => {
 
          owner: req.user._id,
 
-         parentFolder: parentFolderId || null,
+         parentFolder: parentId || null,
 
          isDeleted: false
 
@@ -82,7 +82,7 @@ module.exports.createFolder = async (req, res) => {
 
          owner: req.user._id,
 
-         parentFolder: parentFolderId || null
+         parentFolder: parentId || null
 
       });
 
@@ -132,14 +132,14 @@ module.exports.getFolders = async (req, res) => {
 
    try {
 
-      const { parentFolderId } = req.query;
+      const { parentId } = req.query;
 
 
       const folders = await Folder.find({
 
          owner: req.user._id,
 
-         parentFolder: parentFolderId || null,
+         parentFolder: parentId || null,
 
          isDeleted: false
 
@@ -385,15 +385,19 @@ module.exports.renameFolder = async (req, res) => {
 
       return res.status(200).json({
 
-         message: "Folder renamed successfully",
+   message: "Folder renamed successfully",
 
-         folderId: folder._id,
+   folder: {
 
-         name: folder.name,
+      id: folder._id,
 
-         parentFolder: folder.parentFolder
+      name: folder.name,
 
-      });
+      parentFolder: folder.parentFolder
+
+   }
+
+});
 
 
 

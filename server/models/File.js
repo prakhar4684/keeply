@@ -25,6 +25,7 @@ const fileSchema=new mongoose.Schema({
     s3Key:{
         type: String,
         required: true},
+        
     isDeleted:{
         type: Boolean,
         default: false},
