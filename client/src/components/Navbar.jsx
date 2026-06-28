@@ -15,12 +15,22 @@ export default function Navbar({ isAuthenticated = false }) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const navLinks = [
-    { label: 'Features', href: '#features' },
-    { label: 'How it Works', href: '#how-it-works' },
-    { label: 'Pricing', href: '/pricing' },
-  ]
+  // Navbar.jsx - navLinks ko update karo
+const navLinks = [
+  { label: 'Features', href: '#features' },
+  { label: 'How it Works', href: '#how-it-works' },
+  { label: 'Pricing', href: '/pricing' },
+]
 
+// Smooth scroll handler
+const handleNavClick = (e, href) => {
+  if (href.startsWith('#')) {
+    e.preventDefault()
+    const el = document.querySelector(href)
+    if (el) el.scrollIntoView({ behavior: 'smooth' })
+    setMobileOpen(false)
+  }
+}
   return (
     <motion.header
       initial={{ y: -80, opacity: 0 }}

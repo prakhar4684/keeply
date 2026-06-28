@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Trash2, RotateCcw, AlertTriangle, File, Folder,
@@ -7,9 +8,16 @@ import {
 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import EmptyState from '../components/EmptyState'
-import { dummyUser, dummyStorage, dummyTrashItems } from '../data/dummyData'
+import {
+  getTrash,
+  restoreFile,
+  restoreFolder,
+  deleteFileForever,
+  deleteFolderForever,
+  emptyTrash,
+} from '../services/trashService'
+import { useAuth } from '../context/AuthContext'
 
-// ─── File type icon helper ────────────────────────────────────────
 const typeIconMap = {
   pdf: { icon: FileText, color: 'text-red-400', bg: 'bg-red-50' },
   word: { icon: FileText, color: 'text-blue-400', bg: 'bg-blue-50' },
@@ -38,13 +46,12 @@ function formatDate(dateStr) {
 
 function daysUntilPermanentDelete(dateStr) {
   const deleted = new Date(dateStr)
-  const expiry = new Date(deleted.getTime() + 30 * 24 * 60 * 60 * 1000)
+  const expiry = new Date(deleted.getTime() + 10 * 24 * 60 * 60 * 1000)
   const now = new Date()
   const diff = Math.max(0, Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)))
   return diff
 }
 
-// ─── Confirm Delete Dialog ────────────────────────────────────────
 function ConfirmDialog({ isOpen, onConfirm, onCancel, title, message, dangerous = false }) {
   if (!isOpen) return null
   return (
@@ -93,7 +100,6 @@ function ConfirmDialog({ isOpen, onConfirm, onCancel, title, message, dangerous 
   )
 }
 
-// ─── Single Trash Item Row ────────────────────────────────────────
 function TrashItem({ item, onRestore, onDelete }) {
   const { icon: Icon, color, bg } = getIcon(item.type)
   const daysLeft = daysUntilPermanentDelete(item.deletedAt)
@@ -109,12 +115,10 @@ function TrashItem({ item, onRestore, onDelete }) {
       className="bg-white border border-gray-100 rounded-2xl p-4 hover:border-gray-200 hover:shadow-sm transition-all"
     >
       <div className="flex items-start gap-4">
-        {/* Icon */}
         <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
           <Icon size={20} className={color} />
         </div>
 
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -124,7 +128,6 @@ function TrashItem({ item, onRestore, onDelete }) {
               </p>
             </div>
 
-            {/* Days left badge */}
             <span className={`flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
               isExpiringSoon
                 ? 'bg-red-50 text-red-600 border border-red-100'
@@ -149,7 +152,6 @@ function TrashItem({ item, onRestore, onDelete }) {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-2 mt-4 ml-[60px]">
         <motion.button
           whileHover={{ scale: 1.03 }}
@@ -174,9 +176,11 @@ function TrashItem({ item, onRestore, onDelete }) {
   )
 }
 
-// ─── Page ────────────────────────────────────────────────────────
 export default function Trash() {
-  const [items, setItems] = useState(dummyTrashItems)
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
   const [confirm, setConfirm] = useState({ open: false, type: null, item: null })
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -186,24 +190,77 @@ export default function Trash() {
     setTimeout(() => setToast(t => ({ ...t, show: false })), 3000)
   }
 
-  // TODO: connect backend API - POST /api/trash/:id/restore
-  const handleRestore = (item) => {
-    setItems(prev => prev.filter(i => i.id !== item.id))
-    showToast(`"${item.name}" restored successfully.`, 'success')
+  const normalizeItems = (files, folders) => {
+    const normalizedFiles = files.map(f => ({
+      ...f,
+      id: f._id,
+      itemType: 'file',
+    }))
+    const normalizedFolders = folders.map(f => ({
+      ...f,
+      id: f._id,
+      itemType: 'folder',
+      type: 'folder',
+    }))
+    return [...normalizedFiles, ...normalizedFolders]
   }
 
-  // TODO: connect backend API - DELETE /api/trash/:id (permanent)
-  const handlePermanentDelete = (item) => {
-    setItems(prev => prev.filter(i => i.id !== item.id))
-    showToast(`"${item.name}" permanently deleted.`, 'error')
-    setConfirm({ open: false, type: null, item: null })
+  const loadTrash = useCallback(async () => {
+    try {
+      setLoading(true)
+      const data = await getTrash()
+      setItems(normalizeItems(data.files, data.folders))
+    } catch (error) {
+      showToast('Failed to load trash. Please try again.', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadTrash()
+  }, [loadTrash])
+
+  const handleRestore = async (item) => {
+    try {
+      if (item.itemType === 'file') {
+        await restoreFile(item.id)
+      } else {
+        await restoreFolder(item.id)
+      }
+      await loadTrash()
+      showToast(`"${item.name}" restored successfully.`, 'success')
+    } catch (error) {
+      showToast(`Failed to restore "${item.name}". Please try again.`, 'error')
+    }
   }
 
-  // TODO: connect backend API - DELETE /api/trash (empty all)
-  const handleEmptyAll = () => {
-    setItems([])
-    showToast('Trash emptied. All files permanently deleted.', 'error')
-    setConfirm({ open: false, type: null, item: null })
+  const handlePermanentDelete = async (item) => {
+    try {
+      if (item.itemType === 'file') {
+        await deleteFileForever(item.id)
+      } else {
+        await deleteFolderForever(item.id)
+      }
+      await loadTrash()
+      showToast(`"${item.name}" permanently deleted.`, 'error')
+      setConfirm({ open: false, type: null, item: null })
+    } catch (error) {
+      showToast(`Failed to delete "${item.name}". Please try again.`, 'error')
+      setConfirm({ open: false, type: null, item: null })
+    }
+  }
+
+  const handleEmptyAll = async () => {
+    try {
+      await emptyTrash()
+      await loadTrash()
+      showToast('Trash emptied. All files permanently deleted.', 'error')
+      setConfirm({ open: false, type: null, item: null })
+    } catch (error) {
+      showToast('Failed to empty trash. Please try again.', 'error')
+      setConfirm({ open: false, type: null, item: null })
+    }
   }
 
   const totalSize = items
@@ -218,7 +275,6 @@ export default function Trash() {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
 
-      {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -231,21 +287,18 @@ export default function Trash() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
       <div className={`fixed lg:static inset-y-0 left-0 z-50 lg:z-auto transform transition-transform duration-300 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <Sidebar
-          user={dummyUser}
-          storage={dummyStorage}
-          onLogout={() => alert('TODO: connect logout API')}
+          user={user}
+          activeSection="trash"
+          onNavigate={(section) => navigate('/dashboard', { state: { section } })}
         />
       </div>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Header */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -258,7 +311,7 @@ export default function Trash() {
             <div>
               <h1 className="text-lg font-black text-gray-900">Trash</h1>
               <p className="text-xs text-gray-400">
-                {items.length} item{items.length !== 1 ? 's' : ''} · Files deleted over 30 days are removed automatically
+                {items.length} item{items.length !== 1 ? 's' : ''} · Files deleted over 10 days are removed automatically
               </p>
             </div>
           </div>
@@ -276,10 +329,8 @@ export default function Trash() {
           )}
         </motion.header>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
 
-          {/* Info banner */}
           {items.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -288,7 +339,7 @@ export default function Trash() {
             >
               <Info size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-amber-800">Files are permanently deleted after 30 days</p>
+                <p className="text-sm font-semibold text-amber-800">Files are permanently deleted after 10 days</p>
                 <p className="text-xs text-amber-600 mt-0.5">
                   Trash contains {items.length} item{items.length !== 1 ? 's' : ''} ({formatTotalSize(totalSize)}). Restore anything you need before it's gone.
                 </p>
@@ -296,42 +347,13 @@ export default function Trash() {
             </motion.div>
           )}
 
-          {/* Stats row */}
           {items.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               {[
-                {
-                  label: 'Total Items',
-                  value: items.length,
-                  color: 'text-gray-900',
-                  bg: 'bg-white',
-                  icon: Trash2,
-                  iconColor: 'text-gray-400',
-                },
-                {
-                  label: 'Files',
-                  value: items.filter(i => i.itemType === 'file').length,
-                  color: 'text-blue-700',
-                  bg: 'bg-blue-50',
-                  icon: File,
-                  iconColor: 'text-blue-400',
-                },
-                {
-                  label: 'Folders',
-                  value: items.filter(i => i.itemType === 'folder').length,
-                  color: 'text-amber-700',
-                  bg: 'bg-amber-50',
-                  icon: Folder,
-                  iconColor: 'text-amber-400',
-                },
-                {
-                  label: 'Expiring Soon',
-                  value: items.filter(i => daysUntilPermanentDelete(i.deletedAt) <= 5).length,
-                  color: 'text-red-700',
-                  bg: 'bg-red-50',
-                  icon: Clock,
-                  iconColor: 'text-red-400',
-                },
+                { label: 'Total Items', value: items.length, color: 'text-gray-900', bg: 'bg-white', icon: Trash2, iconColor: 'text-gray-400' },
+                { label: 'Files', value: items.filter(i => i.itemType === 'file').length, color: 'text-blue-700', bg: 'bg-blue-50', icon: File, iconColor: 'text-blue-400' },
+                { label: 'Folders', value: items.filter(i => i.itemType === 'folder').length, color: 'text-amber-700', bg: 'bg-amber-50', icon: Folder, iconColor: 'text-amber-400' },
+                { label: 'Expiring Soon', value: items.filter(i => daysUntilPermanentDelete(i.deletedAt) <= 5).length, color: 'text-red-700', bg: 'bg-red-50', icon: Clock, iconColor: 'text-red-400' },
               ].map(stat => (
                 <motion.div
                   key={stat.label}
@@ -349,12 +371,14 @@ export default function Trash() {
             </div>
           )}
 
-          {/* Trash items */}
-          {items.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="w-8 h-8 border-4 border-gray-200 border-t-red-400 rounded-full animate-spin" />
+            </div>
+          ) : items.length === 0 ? (
             <EmptyState type="trash" />
           ) : (
             <>
-              {/* Expiring soon section */}
               {items.some(i => daysUntilPermanentDelete(i.deletedAt) <= 5) && (
                 <div className="mb-6">
                   <h3 className="text-xs font-bold text-red-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -378,7 +402,6 @@ export default function Trash() {
                 </div>
               )}
 
-              {/* Regular items */}
               {items.some(i => daysUntilPermanentDelete(i.deletedAt) > 5) && (
                 <div>
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
@@ -403,7 +426,6 @@ export default function Trash() {
             </>
           )}
 
-          {/* Security note */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -416,7 +438,6 @@ export default function Trash() {
         </div>
       </div>
 
-      {/* ── Confirm Dialog ── */}
       <ConfirmDialog
         isOpen={confirm.open}
         dangerous={true}
@@ -433,7 +454,6 @@ export default function Trash() {
         onCancel={() => setConfirm({ open: false, type: null, item: null })}
       />
 
-      {/* ── Toast Notification ── */}
       <AnimatePresence>
         {toast.show && (
           <motion.div

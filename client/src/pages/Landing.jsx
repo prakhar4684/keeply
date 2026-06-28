@@ -8,18 +8,99 @@ import {
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { featuresList, howItWorksSteps, pricingPlans } from '../data/dummyData'
+
+// ── Inline Data ──────────────────────────────────────────────────
+
+const featuresList = [
+  {
+    id: 1,
+    icon: 'ShieldCheck',
+    color: 'emerald',
+    title: 'Military-Grade Encryption',
+    description: 'Every file is encrypted with AES-256 at rest inside private AWS S3 buckets. Nobody — not even us — can read your data.',
+  },
+  {
+    id: 2,
+    icon: 'Cloud',
+    color: 'blue',
+    title: 'AWS S3 Powered',
+    description: 'Built on the same infrastructure that powers Netflix and Airbnb. 99.999999999% durability. Your files aren\'t going anywhere.',
+  },
+  {
+    id: 3,
+    icon: 'FolderOpen',
+    color: 'purple',
+    title: 'Smart Folder Organization',
+    description: 'Create nested folders, move files in bulk, and keep everything structured the way your brain works.',
+  },
+  {
+    id: 4,
+    icon: 'Share2',
+    color: 'orange',
+    title: 'Instant Secure Sharing',
+    description: 'Share any file with a temporary presigned link that auto-expires. No account needed for recipients.',
+  },
+  {
+    id: 5,
+    icon: 'Search',
+    color: 'teal',
+    title: 'Instant File Search',
+    description: 'Find any file across all your folders in milliseconds. Search by name, type, or date.',
+  },
+  {
+    id: 6,
+    icon: 'Trash2',
+    color: 'rose',
+    title: 'Safe Delete & Recovery',
+    description: 'Deleted files go to trash first. Recover anything within 30 days on Pro, 90 days on Premium.',
+  },
+]
+
+const howItWorksSteps = [
+  {
+    step: 1,
+    icon: 'Upload',
+    color: 'emerald',
+    title: 'Upload your files',
+    description: 'Drag and drop or click to upload. Files go directly to your private S3 bucket — never through our servers.',
+  },
+  {
+    step: 2,
+    icon: 'FolderOpen',
+    color: 'blue',
+    title: 'Organize into folders',
+    description: 'Create a folder structure that makes sense for you. Move, rename, and nest however you like.',
+  },
+  {
+    step: 3,
+    icon: 'Share2',
+    color: 'purple',
+    title: 'Share securely',
+    description: 'Generate a time-limited share link in one click. Set expiry in minutes or days on Pro plans.',
+  },
+  {
+    step: 4,
+    icon: 'ShieldCheck',
+    color: 'orange',
+    title: 'Stay in control',
+    description: 'Revoke access anytime, track downloads, and manage everything from one clean dashboard.',
+  },
+]
+
+// ── Icon / color maps ────────────────────────────────────────────
 
 const iconMap = { ShieldCheck, Cloud, FolderOpen, Share2, Search, Trash2, Upload, Globe, Shield }
 
 const featureColors = {
   emerald: { bg: 'bg-emerald-50', icon: 'text-emerald-600', border: 'border-emerald-100' },
-  blue: { bg: 'bg-blue-50', icon: 'text-blue-600', border: 'border-blue-100' },
-  purple: { bg: 'bg-purple-50', icon: 'text-purple-600', border: 'border-purple-100' },
-  orange: { bg: 'bg-orange-50', icon: 'text-orange-600', border: 'border-orange-100' },
-  teal: { bg: 'bg-teal-50', icon: 'text-teal-600', border: 'border-teal-100' },
-  rose: { bg: 'bg-rose-50', icon: 'text-rose-600', border: 'border-rose-100' },
+  blue:    { bg: 'bg-blue-50',    icon: 'text-blue-600',    border: 'border-blue-100'    },
+  purple:  { bg: 'bg-purple-50',  icon: 'text-purple-600',  border: 'border-purple-100'  },
+  orange:  { bg: 'bg-orange-50',  icon: 'text-orange-600',  border: 'border-orange-100'  },
+  teal:    { bg: 'bg-teal-50',    icon: 'text-teal-600',    border: 'border-teal-100'    },
+  rose:    { bg: 'bg-rose-50',    icon: 'text-rose-600',    border: 'border-rose-100'    },
 }
+
+// ── FadeUp helper ────────────────────────────────────────────────
 
 function FadeUp({ children, delay = 0 }) {
   const ref = useRef(null)
@@ -35,6 +116,8 @@ function FadeUp({ children, delay = 0 }) {
     </motion.div>
   )
 }
+
+// ── Page ─────────────────────────────────────────────────────────
 
 export default function Landing() {
   return (
@@ -117,7 +200,7 @@ export default function Landing() {
               transition={{ delay: 0.6 }}
               className="text-sm text-gray-400 mt-5"
             >
-              Free forever • No credit card required • 5 GB free storage
+              Free forever • No credit card required • 100 MB free storage
             </motion.p>
           </div>
 
@@ -369,7 +452,7 @@ export default function Landing() {
               Start free, scale as you grow
             </h2>
             <p className="text-lg text-gray-500 mb-8">
-              No surprise charges. No hidden fees. Free forever with up to 5 GB of storage.
+              No surprise charges. No hidden fees. Free forever with up to 100 MB of storage.
             </p>
             <div className="flex justify-center gap-4">
               <Link to="/pricing">

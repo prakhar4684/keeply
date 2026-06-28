@@ -1,5 +1,6 @@
 const File = require('../models/File');
 const User = require('../models/User');
+const Folder = require("../models/Folder");
 const mongoose = require('mongoose');
 const {
     generateUploadUrl,
@@ -9,17 +10,13 @@ const {
 
 module.exports.createUploadUrl = async (req, res) => {
 
-
     try {
 
-
         const data = req.body;
-
 
         const user = await User.findById(
             req.user._id
         );
-
 
         if (!user) {
 
@@ -32,12 +29,42 @@ module.exports.createUploadUrl = async (req, res) => {
         }
 
 
+        // Validate folder (if uploading inside a folder)
+
+        if (data.folderId) {
+
+            const folder = await Folder.findOne({
+
+                _id: data.folderId,
+
+                owner: req.user._id,
+
+                isDeleted: false
+
+            });
+
+            if (!folder) {
+
+                return res.status(404).json({
+
+                    message: "Folder not found"
+
+                });
+
+            }
+
+        }
+
+
+        // Check storage limit
 
         if (
-            data.size + user.usedStorage
-            > user.storageLimit
-        ) {
 
+            data.size + user.usedStorage >
+
+            user.storageLimit
+
+        ) {
 
             return res.status(400).json({
 
@@ -48,20 +75,29 @@ module.exports.createUploadUrl = async (req, res) => {
         }
 
 
+        // Generate S3 key
 
         const s3Key =
+
             `users/${user._id}/${Date.now()}-${data.fileName}`;
 
 
+        // Generate presigned upload URL
+
         const uploadUrl =
+
             await generateUploadUrl(
+
                 s3Key,
+
                 data.mimeType
+
             );
 
 
-
         return res.status(200).json({
+
+            message: "Upload URL generated successfully",
 
             uploadUrl,
 
@@ -69,14 +105,11 @@ module.exports.createUploadUrl = async (req, res) => {
 
         });
 
-
-
     }
 
     catch (error) {
 
-        console.log(error);
-
+        console.log("Create upload URL error:", error);
 
         return res.status(500).json({
 
@@ -86,12 +119,10 @@ module.exports.createUploadUrl = async (req, res) => {
 
     }
 
-
-}
-
+};
 
 
-module.exports.completeUpload  = async (req, res) => {
+module.exports.completeUpload = async (req, res) => {
 
     const session = await mongoose.startSession();
 
@@ -101,6 +132,32 @@ module.exports.completeUpload  = async (req, res) => {
 
 
         const data = req.body;
+
+        if (data.folderId) {
+
+            const folder = await Folder.findOne({
+
+                _id: data.folderId,
+
+                owner: req.user._id,
+
+                isDeleted: false
+
+            }).session(session);
+
+            if (!folder) {
+
+                await session.abortTransaction();
+
+                return res.status(404).json({
+
+                    message: "Folder not found"
+
+                });
+
+            }
+
+        }
 
 
         const user = await User.findById(
@@ -138,7 +195,7 @@ module.exports.completeUpload  = async (req, res) => {
             owner: user._id,
 
             originalName: data.originalName,
-
+            folder: data.folderId || null,
             fileName: data.fileName,
 
             mimeType: data.mimeType,
@@ -202,21 +259,65 @@ module.exports.completeUpload  = async (req, res) => {
 }
 
 module.exports.getFiles = async (req, res) => {
+
     try {
-        const userId = req.user._id;
+
+        const { folderId } = req.query;
 
         const files = await File.find({
-            owner: userId,
+
+            owner: req.user._id,
+
+            folder: folderId || null,
+
             isDeleted: false
-        }).sort({
+
+        })
+        .sort({
             createdAt: -1
         });
 
-        res.status(200).json({ message: "Files retrieved successfully", files });
-    } catch (error) {
-        res.status(500).json({ message: "Internal server error" });
+        return res.status(200).json({
+
+            message: "Files fetched successfully",
+
+            files: files.map(file => ({
+
+                id: file._id,
+
+                originalName: file.originalName,
+
+                fileName: file.fileName,
+
+                mimeType: file.mimeType,
+
+                size: file.size,
+
+                folder: file.folder,
+
+                createdAt: file.createdAt,
+
+                updatedAt: file.updatedAt
+
+            }))
+
+        });
+
     }
-}
+
+    catch (error) {
+
+        console.log("Get files error:", error);
+
+        return res.status(500).json({
+
+            message: "Internal server error"
+
+        });
+
+    }
+
+};
 
 module.exports.getFile = async (req, res) => {
 
@@ -231,17 +332,17 @@ module.exports.getFile = async (req, res) => {
 
             owner: req.user._id,
 
-            isDeleted:false
+            isDeleted: false
 
         });
 
 
 
-        if(!file){
+        if (!file) {
 
             return res.status(404).json({
 
-                message:"File not found"
+                message: "File not found"
 
             });
 
@@ -250,15 +351,15 @@ module.exports.getFile = async (req, res) => {
 
 
         const downloadUrl =
-        await generateDownloadUrl(
-            file.s3Key
-        );
+            await generateDownloadUrl(
+                file.s3Key
+            );
 
 
 
         return res.status(200).json({
 
-            message:"File retrieved successfully",
+            message: "File retrieved successfully",
 
             file,
 
@@ -269,20 +370,106 @@ module.exports.getFile = async (req, res) => {
 
     }
 
-    catch(error){
+    catch (error) {
 
         console.log(error);
 
 
         return res.status(500).json({
 
-            message:"Internal server error"
+            message: "Internal server error"
 
         });
 
     }
 
 }
+
+module.exports.renameFile = async (req, res) => {
+
+    try {
+
+        const fileId = req.params.id;
+
+        const { originalName } = req.body;
+
+        if (!originalName || !originalName.trim()) {
+
+            return res.status(400).json({
+
+                message: "File name is required"
+
+            });
+
+        }
+
+        const file = await File.findOne({
+
+            _id: fileId,
+
+            owner: req.user._id,
+
+            isDeleted: false
+
+        });
+
+        if (!file) {
+
+            return res.status(404).json({
+
+                message: "File not found"
+
+            });
+
+        }
+
+        file.originalName = originalName.trim();
+
+        await file.save();
+
+        return res.status(200).json({
+
+            message: "File renamed successfully",
+
+            file: {
+
+                id: file._id,
+
+                originalName: file.originalName,
+
+                fileName: file.fileName,
+
+                mimeType: file.mimeType,
+
+                size: file.size,
+
+                folder: file.folder,
+
+                createdAt: file.createdAt,
+
+                updatedAt: file.updatedAt
+
+            }
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.log(error);
+
+        return res.status(500).json({
+
+            message: "Internal server error"
+
+        });
+
+    }
+
+}
+
+
 
 module.exports.deleteFile = async (req, res) => {
 

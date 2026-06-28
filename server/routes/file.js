@@ -6,7 +6,8 @@ const {
     completeUpload ,
     getFiles,
     getFile,
-    deleteFile
+    deleteFile,
+    renameFile
 }=require('../controllers/fileController');
 
 router.post('/upload-url',protected,createUploadUrl);
@@ -15,6 +16,6 @@ router.post('/upload-url',protected,createUploadUrl);
 router.post('/complete-upload',protected,completeUpload );
 router.get('/',protected,getFiles);
 router.get('/:id',protected,getFile);
-router.delete('/delete/:id',protected,deleteFile);
-
+router.patch('/:id',protected,renameFile);
+router.delete('/:id',protected,deleteFile);
 module.exports=router;

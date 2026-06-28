@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Toaster, toast } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast"
 import {
   Upload, FolderPlus, Grid, List, ChevronDown,
   Bell, LayoutGrid, Rows3, X, Plus, Menu,
   ArrowLeft
 } from 'lucide-react'
-import { getDashboardStats }
-  from "../services/dashboardService";
-import { useAuth } from "../context/AuthContext";
+import RenameFileModal from "../components/RenameFileModal"
+import { getDashboardStats } from "../services/dashboardService"
+import { useAuth } from "../context/AuthContext"
 import Sidebar from '../components/Sidebar'
 import SearchBar from '../components/SearchBar'
 import Breadcrumb from '../components/Breadcrumb'
@@ -17,25 +18,13 @@ import FileCard from '../components/FileCard'
 import UploadModal from '../components/UploadModal'
 import RenameFolderModal from '../components/RenameFolderModal'
 import DeleteFolderModal from '../components/DeleteFolderModal'
-
+import { createShareLink } from "../services/shareService"
 import ShareModal from '../components/ShareModal'
 import EmptyState from '../components/EmptyState'
 import UserMenu from '../components/UserMenu'
 import { DashboardSkeleton } from '../components/Loader'
-import {
-  getFolders,
-  createFolder,
-}
-  from "../services/folderService";
-import {
-  dummyFiles,
-
-} from '../data/dummyData'
-
-
-
-
-
+import { getFolders, createFolder } from "../services/folderService"
+import { getFiles, getFile, deleteFile } from "../services/fileService"
 
 
 // ─── New Folder Modal ────────────────────────────────────────────
@@ -55,7 +44,6 @@ function NewFolderModal({ isOpen, onClose, onCreate }) {
 
   const handleCreate = () => {
     if (!name.trim()) return
-    // TODO: connect backend API - POST /api/folders { name, color, parentId }
     onCreate?.({ name: name.trim(), color })
     setName('')
     setColor('emerald')
@@ -109,8 +97,9 @@ function NewFolderModal({ isOpen, onClose, onCreate }) {
                   <button
                     key={c}
                     onClick={() => setColor(c)}
-                    className={`w-8 h-8 rounded-full ${colorDots[c]} transition-all ${color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'
-                      }`}
+                    className={`w-8 h-8 rounded-full ${colorDots[c]} transition-all ${
+                      color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'
+                    }`}
                   />
                 ))}
               </div>
@@ -128,10 +117,11 @@ function NewFolderModal({ isOpen, onClose, onCreate }) {
               whileTap={{ scale: 0.97 }}
               onClick={handleCreate}
               disabled={!name.trim()}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${name.trim()
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                name.trim()
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
             >
               Create Folder
             </motion.button>
@@ -144,236 +134,117 @@ function NewFolderModal({ isOpen, onClose, onCreate }) {
 
 // ─── Main Dashboard ──────────────────────────────────────────────
 export default function Dashboard() {
-  const [viewMode, setViewMode] = useState('grid')          // 'grid' | 'list'
-  const [activeSection, setActiveSection] = useState('home') // 'home' | 'recent' | 'shared'
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [viewMode, setViewMode] = useState('grid')
+  const [activeSection, setActiveSection] = useState(location.state?.section || 'home')
   const [uploadOpen, setUploadOpen] = useState(false)
   const [shareModal, setShareModal] = useState({ open: false, file: null })
   const [newFolderOpen, setNewFolderOpen] = useState(false)
-  const [renameModal, setRenameModal] = useState({
-    open: false,
-    folder: null
-  });
-
-  const [deleteModal, setDeleteModal] = useState({
-    open: false,
-    folder: null
-  });
-  const [newMenuOpen, setNewMenuOpen] = useState(false);
-  const [files] = useState(dummyFiles)
+  const [renameModal, setRenameModal] = useState({ open: false, folder: null })
+  const [files, setFiles] = useState([])
+  const [deleteModal, setDeleteModal] = useState({ open: false, folder: null })
+  const [newMenuOpen, setNewMenuOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-
-  const [folders, setFolders]
-    =
-    useState([])
-  const [
-    currentFolder,
-    setCurrentFolder
-  ]
-    =
-    useState(null)
+  const [folders, setFolders] = useState([])
+  const [currentFolder, setCurrentFolder] = useState(null)
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
-  const [folderPath, setFolderPath] =
-    useState([]);
+  const [folderPath, setFolderPath] = useState([])
+  const [stats, setStats] = useState(null)
+  const [renameFileOpen, setRenameFileOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
 
-  const [stats, setStats] = useState(null);
+  // ── storage object in bytes — single source of truth from Dashboard API ──
+  // Both Sidebar and UserMenu receive this same object
+  const storage = {
+    used:  stats?.usedStorage  ?? 0,   // bytes
+    total: stats?.storageLimit ?? 0,   // bytes
+  }
+
+  const handleSidebarNavigate = useCallback((section) => {
+    if (section === 'trash') {
+      navigate('/trash')
+      return
+    }
+    setActiveSection(section)
+    setCurrentFolder(null)
+    setFolderPath([])
+    setSidebarOpen(false)
+  }, [navigate])
 
   const handleBackFolder = () => {
-
-
-    if (folderPath.length === 0)
-      return;
-
-
-    const newPath =
-      folderPath.slice(
-        0,
-        -1
-      );
-
-
-    setFolderPath(
-      newPath
-    );
-
-
-    const previousFolder =
-      newPath[
-      newPath.length - 1
-      ];
-
-
-    setCurrentFolder(
-      previousFolder
-        ?
-        previousFolder.id
-        :
-        null
-    );
-
-
-  };
-
-
+    if (folderPath.length === 0) return
+    const newPath = folderPath.slice(0, -1)
+    setFolderPath(newPath)
+    const previousFolder = newPath[newPath.length - 1]
+    setCurrentFolder(previousFolder ? previousFolder.id : null)
+  }
 
   useEffect(() => {
-
-
     const loadStats = async () => {
-
-
       try {
-
-
-        const data =
-          await getDashboardStats();
-
-
-        setStats(data);
-
-
+        const data = await getDashboardStats()
+        setStats(data)
+      } catch (error) {
+        console.log(error)
+      } finally {
+        setLoading(false)
       }
-      catch (error) {
-
-
-        console.log(error);
-
-
-      }
-      finally {
-
-
-        setLoading(false);
-
-
-      }
-
-
-    };
-
-
-    loadStats();
-
-
-  }, []);
-
-  //get folder useEffect
+    }
+    loadStats()
+  }, [])
 
   useEffect(() => {
-
-
-    const loadFolders
-      =
-      async () => {
-
-
-        try {
-
-
-          const data
-            =
-
-
-            await getFolders(
-              currentFolder
-            );
-          console.log(
-            "CURRENT FOLDER:",
-            currentFolder
-          );
-
-          console.log(
-            "FOLDERS RESPONSE:",
-            data
-          );
-
-
-          setFolders(
-            data
-          );
-
-
-
-        }
-        catch (error) {
-
-
-          console.log(
-            error
-          );
-
-
-        }
-
-
-      }
-
-
-
-    loadFolders()
-
-
-
-  },
-    [
-      currentFolder
-    ]);
-
-  const handleCreateFolder =
-    async (data) => {
-
-
+    if (activeSection !== 'home') return
+    const loadFolders = async () => {
       try {
-
-
-        const folder =
-          await createFolder({
-
-            name: data.name,
-
-            parentId: currentFolder
-
-          });
-
-
-
-        setFolders(
-          prev => [
-            folder,
-            ...prev
-          ]
-        );
-
-
-
+        const data = await getFolders(currentFolder)
+        setFolders(data)
+      } catch (error) {
+        console.log(error)
       }
-      catch (error) {
+    }
+    loadFolders()
+  }, [currentFolder, activeSection])
 
-
-        console.log(
-          error
-        );
-
-
+  const loadFiles = useCallback(async () => {
+    try {
+      let data
+      switch (activeSection) {
+        case 'recent':
+          data = await getRecentFiles()
+          break
+        case 'shared':
+          data = await getSharedFiles()
+          break
+        default:
+          data = await getFiles(currentFolder)
       }
+      setFiles(data)
+    } catch (error) {
+      console.log(error)
+    }
+  }, [activeSection, currentFolder])
 
+  useEffect(() => {
+    loadFiles()
+  }, [loadFiles])
 
-    };
+  const handleCreateFolder = async (data) => {
+    try {
+      const folder = await createFolder({ name: data.name, parentId: currentFolder })
+      setFolders(prev => [folder, ...prev])
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
-  // TODO: connect backend API - DELETE /api/folders/:id
   const handleFolderDelete = async (folder) => {
+    setDeleteModal({ open: true, folder })
+  }
 
-    setDeleteModal({
-      open: true,
-      folder
-    });
-
-  };
-
-  // TODO: connect backend API - POST /api/folders/:id/share
   const handleFolderShare = (folder) => {
-    // Folder share — treat like a file object for the ShareModal
     setShareModal({
       open: true,
       file: {
@@ -385,28 +256,70 @@ export default function Dashboard() {
     })
   }
 
-
   const handleFolderRename = async (folder) => {
-    console.log("Rename Clicked", folder);
-    setRenameModal({
-      open: true,
-      folder
-    });
-  };
-
-  // TODO: connect backend API - GET /api/files/:id/download (presigned URL)
-  const handleFileDownload = (file) => {
-    alert(`Download flow: fetch presigned URL for "${file.name}" from backend.`)
+    setRenameModal({ open: true, folder })
   }
 
-  // TODO: connect backend API - POST /api/files/:id/share
-  const handleFileShare = (file) => {
-    setShareModal({ open: true, file })
+  const handleFileOpen = async (file) => {
+    try {
+      const data = await getFile(file.id)
+      const url = data.downloadUrl
+      if (
+        file.mimeType.startsWith("image/") ||
+        file.mimeType === "application/pdf" ||
+        file.mimeType.startsWith("video/") ||
+        file.mimeType.startsWith("audio/")
+      ) {
+        window.open(url, "_blank")
+        return
+      }
+      const link = document.createElement("a")
+      link.href = url
+      link.download = file.originalName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.log(error)
+      toast.error("Unable to open file")
+    }
   }
 
-  // TODO: connect backend API - DELETE /api/files/:id (move to trash)
-  const handleFileDelete = (file) => {
-    alert(`"${file.name}" moved to trash.`)
+  const handleFileDownload = async (file) => {
+    try {
+      const data = await getFile(file.id)
+      window.open(data.downloadUrl, "_blank")
+    } catch (error) {
+      console.log(error)
+      toast.error("Download failed")
+    }
+  }
+
+  const handleFileDelete = async (file) => {
+    try {
+      await deleteFile(file.id)
+      setFiles(prev => prev.filter(f => f.id !== file.id))
+      toast.success("File moved to trash")
+    } catch (error) {
+      console.log(error)
+      toast.error("Failed to delete file")
+    }
+  }
+
+  const handleFileShare = async (file) => {
+    try {
+      const data = await createShareLink(file.id)
+      await navigator.clipboard.writeText(data.shareLink)
+      toast.success("Share link copied to clipboard")
+    } catch (error) {
+      console.log(error)
+      toast.error("Failed to create share link")
+    }
+  }
+
+  const handleFileRename = (file) => {
+    setSelectedFile(file)
+    setRenameFileOpen(true)
   }
 
   const pageVariants = {
@@ -415,25 +328,13 @@ export default function Dashboard() {
     exit: { opacity: 0, x: -16 },
   }
 
-  const filteredFiles = activeSection === 'shared'
-    ? files.filter(f => f.isShared)
-    : files
-
-  const breadcrumbItems =
-    [
-      {
-        id: null,
-        name: "My Drive"
-      },
-
-      ...folderPath
-
-    ];
+  const filteredFiles = files
+  const breadcrumbItems = [{ id: null, name: "My Drive" }, ...folderPath]
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
 
-      {/* ── Mobile sidebar overlay ── */}
+      {/* Mobile sidebar overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -446,7 +347,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* ── Sidebar ── */}
+      {/* Sidebar — storage prop in bytes */}
       <div className={`
         fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
         transform transition-transform duration-300 ease-out
@@ -454,20 +355,22 @@ export default function Dashboard() {
       `}>
         <Sidebar
           user={user}
+          storage={storage}
+          activeSection={activeSection}
+          onNavigate={handleSidebarNavigate}
         />
       </div>
 
-      {/* ── Main content ── */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* ── Top bar ── */}
+        {/* Top bar */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
           className="bg-white border-b border-gray-100 px-4 sm:px-6 py-3.5 flex items-center gap-3 flex-shrink-0 z-30"
         >
-          {/* Mobile hamburger */}
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors"
@@ -475,12 +378,20 @@ export default function Dashboard() {
             <Menu size={20} />
           </button>
 
-          {/* Search */}
           <div className="flex-1">
-            <SearchBar placeholder="Search files, folders…" />
+            <SearchBar
+              placeholder="Search files, folders…"
+              onSelectFolder={(folder) => {
+                setActiveSection('home')
+                setCurrentFolder(folder.id)
+                setFolderPath(prev => [...prev, folder])
+              }}
+              onSelectFile={(file) => {
+                handleFileOpen(file.raw)
+              }}
+            />
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-2">
             <motion.button
               whileHover={{ scale: 1.04 }}
@@ -502,119 +413,59 @@ export default function Dashboard() {
               <span className="hidden sm:inline">Upload</span>
             </motion.button>
 
-            {/* Avatar */}
+            {/* UserMenu — storage prop in bytes */}
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0 cursor-pointer">
-              <UserMenu />
+              <UserMenu storage={storage} />
             </div>
           </div>
         </motion.header>
 
-        {/* ── Scrollable body ── */}
+        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto">
           <div className="px-4 sm:px-6 py-5">
 
             {/* Breadcrumb + view toggle */}
             <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-
-
               <div className="flex items-center gap-2">
-
-
-                {
-                  folderPath.length > 0 && (
-
-                    <button
-
-                      onClick={handleBackFolder}
-
-                      className="
-          p-2
-          rounded-lg
-          hover:bg-gray-100
-          text-gray-500
-          hover:text-gray-800
-          transition
-          "
-
-                    >
-
-                      <ArrowLeft size={18} />
-
-                    </button>
-
-                  )
-                }
-
-
-
+                {folderPath.length > 0 && (
+                  <button
+                    onClick={handleBackFolder}
+                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                )}
                 <Breadcrumb
-
                   items={breadcrumbItems}
-
                   onNavigate={(folder, index) => {
-
-
                     if (folder.id === null) {
-
-
-                      setFolderPath([]);
-
-                      setCurrentFolder(null);
-
-                      return;
-
-
+                      setFolderPath([])
+                      setCurrentFolder(null)
+                      return
                     }
-
-
-
-                    setFolderPath(
-
-                      folderPath.slice(
-                        0,
-                        index
-                      )
-
-                    );
-
-
-
-                    setCurrentFolder(
-
-                      folder.id
-
-                    );
-
-
+                    setFolderPath(folderPath.slice(0, index))
+                    setCurrentFolder(folder.id)
                   }}
-
                 />
-
-
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Section tabs */}
                 <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
-                  {[
-                    { key: 'home', label: 'My Drive' },
-                    { key: 'recent', label: 'Recent' },
-                    { key: 'shared', label: 'Shared' },
-                  ].map(tab => (
+                  {[{ key: 'home', label: 'My Drive' }].map(tab => (
                     <button
                       key={tab.key}
                       onClick={() => setActiveSection(tab.key)}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${activeSection === tab.key
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                        activeSection === tab.key
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
                     >
                       {tab.label}
                     </button>
                   ))}
                 </div>
 
-                {/* Grid/List toggle */}
                 <div className="flex items-center bg-gray-100 rounded-xl p-1">
                   <button
                     onClick={() => setViewMode('grid')}
@@ -644,7 +495,7 @@ export default function Dashboard() {
                 transition={{ duration: 0.25 }}
               >
 
-                {/* ── FOLDERS section ── */}
+                {/* FOLDERS section */}
                 {activeSection === 'home' && (
                   <section className="mb-8">
                     <div className="flex items-center justify-between mb-4">
@@ -669,7 +520,6 @@ export default function Dashboard() {
                       />
                     ) : viewMode === 'grid' ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-                        {/* New folder quick-add card */}
                         <motion.button
                           whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(5,150,105,0.1)' }}
                           whileTap={{ scale: 0.97 }}
@@ -679,30 +529,26 @@ export default function Dashboard() {
                           <Plus size={22} />
                           <span className="text-xs font-semibold">New Folder</span>
                         </motion.button>
-                        {folders.map((folder, i) => {
-                          console.log("Folder", folder);
-
-                          return (
-                            <motion.div
-                              key={folder.id || i}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: i * 0.04 }}
-                            >
-                              <FolderCard
-                                folder={folder}
-                                viewMode="grid"
-                                onOpen={(f) => {
-                                  setFolderPath(prev => [...prev, f]);
-                                  setCurrentFolder(f.id);
-                                }}
-                                onRename={handleFolderRename}
-                                onShare={handleFolderShare}
-                                onDelete={handleFolderDelete}
-                              />
-                            </motion.div>
-                          );
-                        })}
+                        {folders.map((folder, i) => (
+                          <motion.div
+                            key={folder.id || i}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.04 }}
+                          >
+                            <FolderCard
+                              folder={folder}
+                              viewMode="grid"
+                              onOpen={(f) => {
+                                setFolderPath(prev => [...prev, f])
+                                setCurrentFolder(f.id)
+                              }}
+                              onRename={handleFolderRename}
+                              onShare={handleFolderShare}
+                              onDelete={handleFolderDelete}
+                            />
+                          </motion.div>
+                        ))}
                       </div>
                     ) : (
                       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
@@ -716,29 +562,12 @@ export default function Dashboard() {
                             <FolderCard
                               folder={folder}
                               viewMode="list"
-
                               onOpen={(f) => {
-
-
-                                setFolderPath(
-                                  prev => [
-                                    ...prev,
-                                    f
-                                  ]
-                                )
-
-
-                                setCurrentFolder(
-                                  f.id
-                                )
-
-
+                                setFolderPath(prev => [...prev, f])
+                                setCurrentFolder(f.id)
                               }}
-
                               onRename={handleFolderRename}
-
                               onShare={handleFolderShare}
-
                               onDelete={handleFolderDelete}
                             />
                           </motion.div>
@@ -748,17 +577,14 @@ export default function Dashboard() {
                   </section>
                 )}
 
-                {/* ── FILES section ── */}
+                {/* FILES section */}
                 <section>
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
                       <span className="w-2 h-2 bg-blue-400 rounded-full" />
                       {activeSection === "shared" ? "Shared Files" : "Files"}
-                      <span className="text-gray-400 font-normal">
-                        ({filteredFiles.length})
-                      </span>
+                      <span className="text-gray-400 font-normal">({filteredFiles.length})</span>
                     </h2>
-
                     <button
                       onClick={() => setUploadOpen(true)}
                       className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
@@ -776,26 +602,15 @@ export default function Dashboard() {
                     />
                   ) : viewMode === "grid" ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-
-                      {/* Upload File Card */}
                       <motion.button
-                        whileHover={{
-                          y: -2,
-                          boxShadow: "0 8px 24px rgba(16,185,129,.10)",
-                        }}
+                        whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(16,185,129,.10)" }}
                         whileTap={{ scale: 0.97 }}
                         onClick={() => setUploadOpen(true)}
                         className="bg-white border-2 border-dashed border-gray-200 hover:border-emerald-300 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-emerald-600 transition-all min-h-[150px] cursor-pointer"
                       >
                         <Upload size={24} />
-
-                        <span className="text-sm font-semibold">
-                          New File
-                        </span>
-
-                        <span className="text-xs text-gray-400">
-                          Upload anything
-                        </span>
+                        <span className="text-sm font-semibold">New File</span>
+                        <span className="text-xs text-gray-400">Upload anything</span>
                       </motion.button>
 
                       {filteredFiles.map((file, i) => (
@@ -808,7 +623,9 @@ export default function Dashboard() {
                           <FileCard
                             file={file}
                             viewMode="grid"
+                            onOpen={handleFileOpen}
                             onDownload={handleFileDownload}
+                            onRename={handleFileRename}
                             onShare={handleFileShare}
                             onDelete={handleFileDelete}
                           />
@@ -817,19 +634,10 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-
-                      {/* List Header */}
                       <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
                         <div className="w-9 flex-shrink-0" />
-
-                        <span className="flex-1 text-xs font-semibold text-gray-500">
-                          Name
-                        </span>
-
-                        <span className="text-xs font-semibold text-gray-500 hidden sm:block w-24 text-right">
-                          Modified
-                        </span>
-
+                        <span className="flex-1 text-xs font-semibold text-gray-500">Name</span>
+                        <span className="text-xs font-semibold text-gray-500 hidden sm:block w-24 text-right">Modified</span>
                         <span className="text-xs font-semibold text-gray-500 w-8" />
                       </div>
 
@@ -844,7 +652,9 @@ export default function Dashboard() {
                           <FileCard
                             file={file}
                             viewMode="list"
+                            onOpen={handleFileOpen}
                             onDownload={handleFileDownload}
+                            onRename={handleFileRename}
                             onShare={handleFileShare}
                             onDelete={handleFileDelete}
                           />
@@ -854,7 +664,7 @@ export default function Dashboard() {
                   )}
                 </section>
 
-                {/* ── Recent activity strip ── */}
+                {/* Storage Overview */}
                 {activeSection === 'home' && (
                   <motion.section
                     initial={{ opacity: 0 }}
@@ -868,56 +678,20 @@ export default function Dashboard() {
                     </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {[
-                        {
-                          label: 'Total Files',
-
-                          value: stats?.totalFiles || 0,
-
-                          color: 'text-blue-600',
-
-                          bg: 'bg-blue-50'
-                        },
-
-
-                        {
-                          label: 'Folders',
-
-                          value: stats?.totalFolders || 0,
-
-                          color: 'text-amber-600',
-
-                          bg: 'bg-amber-50'
-                        },
-
-
+                        { label: 'Total Files',   value: stats?.totalFiles ?? 0,   color: 'text-blue-600',   bg: 'bg-blue-50' },
+                        { label: 'Folders',       value: stats?.totalFolders ?? 0, color: 'text-amber-600',  bg: 'bg-amber-50' },
                         {
                           label: 'Storage Used',
-
-                          value:
-                            (
-                              (stats?.usedStorage || 0)
-                              /
-                              (1024 * 1024 * 1024)
-
-                            ).toFixed(2)
-                            +
-                            " GB",
-
+                          value: (() => {
+                            const mb = (stats?.usedStorage ?? 0) / (1024 * 1024)
+                            return mb >= 1024
+                              ? `${(mb / 1024).toFixed(2)} GB`
+                              : `${mb.toFixed(2)} MB`
+                          })(),
                           color: 'text-emerald-600',
-
                           bg: 'bg-emerald-50'
                         },
-
-
-                        {
-                          label: 'Plan',
-
-                          value: stats?.plan || "FREE",
-
-                          color: 'text-purple-600',
-
-                          bg: 'bg-purple-50'
-                        }
+                        { label: 'Plan',          value: stats?.plan ?? 'FREE',    color: 'text-purple-600', bg: 'bg-purple-50' },
                       ].map(stat => (
                         <div key={stat.label} className={`${stat.bg} rounded-2xl p-4 text-center`}>
                           <p className={`text-xl font-black ${stat.color}`}>{stat.value}</p>
@@ -927,19 +701,21 @@ export default function Dashboard() {
                     </div>
                   </motion.section>
                 )}
+
               </motion.div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Modals ── */}
+      {/* Modals */}
       <UploadModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}
+        folderId={currentFolder}
         onUploadComplete={() => {
+          loadFiles()
           setUploadOpen(false)
-          // TODO: connect backend API - refresh file list after upload
         }}
       />
 
@@ -954,17 +730,13 @@ export default function Dashboard() {
         onClose={() => setNewFolderOpen(false)}
         onCreate={handleCreateFolder}
       />
+
       <RenameFolderModal
         isOpen={renameModal.open}
         folder={renameModal.folder}
         folders={folders}
         setFolders={setFolders}
-        onClose={() =>
-          setRenameModal({
-            open: false,
-            folder: null
-          })
-        }
+        onClose={() => setRenameModal({ open: false, folder: null })}
       />
 
       <DeleteFolderModal
@@ -976,12 +748,18 @@ export default function Dashboard() {
         setCurrentFolder={setCurrentFolder}
         folderPath={folderPath}
         setFolderPath={setFolderPath}
-        onClose={() =>
-          setDeleteModal({
-            open: false,
-            folder: null
-          })
-        }
+        onClose={() => setDeleteModal({ open: false, folder: null })}
+      />
+
+      <RenameFileModal
+        isOpen={renameFileOpen}
+        file={selectedFile}
+        files={files}
+        setFiles={setFiles}
+        onClose={() => {
+          setRenameFileOpen(false)
+          setSelectedFile(null)
+        }}
       />
 
       <Toaster position="top-right" />

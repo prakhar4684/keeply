@@ -1,6 +1,12 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, X, File, CheckCircle2, AlertCircle, Cloud, Loader2 } from 'lucide-react'
+import {
+    generateUploadUrl,
+    uploadFileToS3,
+    completeUpload
+} from "../services/fileService";
+import { toast } from "react-hot-toast";
 
 // TODO: connect backend API
 // Upload flow:
@@ -42,20 +48,108 @@ export default function UploadModal({ isOpen, onClose, onUploadComplete, folderI
 
   // TODO: connect backend API - simulate upload; replace with real S3 flow
   const handleUpload = async () => {
-    if (!files.length) return
-    setUploadState('uploading')
-    setProgress(0)
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 5) {
-      await new Promise(r => setTimeout(r, 60))
-      setProgress(i)
+
+    if (!files.length) return;
+
+    try {
+
+        setUploadState("uploading");
+
+        setProgress(0);
+
+        for (let i = 0; i < files.length; i++) {
+
+            const current = files[i].file;
+
+            // 1. Generate Upload URL
+
+            const { uploadUrl, s3Key } = await generateUploadUrl({
+
+                fileName: current.name,
+
+                mimeType: current.type,
+
+                size: current.size,
+
+                folderId
+
+            });
+
+            // 2. Upload to AWS S3
+
+            await uploadFileToS3(
+
+                uploadUrl,
+
+                current
+
+            );
+
+            // 3. Save Metadata
+
+            await completeUpload({
+
+                originalName: current.name,
+
+                fileName: current.name,
+
+                mimeType: current.type,
+
+                size: current.size,
+
+                s3Key,
+
+                folderId
+
+            });
+
+            // Progress
+
+            setProgress(
+
+                Math.round(
+
+                    ((i + 1) / files.length) * 100
+
+                )
+
+            );
+
+        }
+
+        setUploadState("success");
+
+        toast.success("Files uploaded successfully");
+
+        onUploadComplete?.();
+
+        setTimeout(() => {
+
+            handleClose();
+
+        }, 1200);
+
     }
-    setUploadState('success')
-    setTimeout(() => {
-      onUploadComplete?.()
-      handleClose()
-    }, 1500)
-  }
+
+    catch (error) {
+
+        console.log(error);
+
+        toast.error(
+
+            error?.response?.data?.message ||
+
+            "Upload failed"
+
+        );
+
+        setUploadState("idle");
+
+        setProgress(0);
+
+    }
+
+};
 
   const handleClose = () => {
     setFiles([])

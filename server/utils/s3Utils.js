@@ -59,22 +59,17 @@ const generateUploadUrl = async (
 
 // View / Download ke liye URL
 
-const generateDownloadUrl = async (
-    key
-) => {
-
+const generateDownloadUrl = async (key) => {
 
     const command = new GetObjectCommand({
 
-        Bucket:
-        process.env.AWS_BUCKET_NAME,
+        Bucket: process.env.AWS_BUCKET_NAME,
 
+        Key: key,
 
-        Key: key
+        ResponseContentDisposition: "inline"
 
     });
-
-
 
     const url = await getSignedUrl(
 
@@ -87,7 +82,6 @@ const generateDownloadUrl = async (
         }
 
     );
-
 
     return url;
 

@@ -10,14 +10,14 @@ import {
 
 import { AnimatePresence } from 'framer-motion'
 
-
+import SharedFile from "./pages/SharedFile";
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Pricing from './pages/Pricing'
 import Trash from './pages/Trash'
-
+import Settings from './components/Settings'
 
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRoute'
@@ -45,7 +45,10 @@ function AnimatedRoutes() {
 
 
         {/* PUBLIC ROUTES */}
-
+        <Route
+    path="/share/:token"
+    element={<SharedFile />}
+/>
 
         <Route
           path="/"
@@ -100,7 +103,14 @@ function AnimatedRoutes() {
           element={<Pricing />}
         />
 
-
+          <Route
+  path="/settings"
+  element={
+    <ProtectedRoute>
+      <Settings />
+    </ProtectedRoute>
+  }
+/>
 
 
 

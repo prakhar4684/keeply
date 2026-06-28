@@ -1,140 +1,166 @@
 # Keeply ☁️
 
+![Version](https://img.shields.io/badge/Version-v1.0-success)
+![Frontend](https://img.shields.io/badge/Frontend-Complete-brightgreen)
+![Backend](https://img.shields.io/badge/Backend-Complete-brightgreen)
+![Status](https://img.shields.io/badge/Status-Ready%20for%20Deployment-blue)
 
-![Progress](https://img.shields.io/badge/Progress-Backend%20Complete-green)
-![Frontend](https://img.shields.io/badge/Frontend-In%20Progress-yellow)
-![Status](https://img.shields.io/badge/Status-Active-blue)
+Keeply is a secure full-stack cloud storage platform inspired by Google Drive.
 
-
-Keeply is a secure full-stack cloud storage platform inspired by Google Drive.  
-It allows users to upload, organize, share, and manage files using secure authentication, AWS S3 private storage, and scalable backend architecture.
-
----
-
-## 🚀 Features
-
-### 🔐 Authentication
-- User Registration
-- User Login
-- Password Hashing using bcrypt
-- JWT Based Authentication
-- Protected APIs
-- Persistent Login Sessions
-- React Context Based Authentication State
-- Public & Private Route Protection
-- Secure Logout Flow
+It allows users to securely upload, organize, search, share, restore, and permanently delete files using secure authentication, AWS S3 private storage, and scalable MERN architecture.
 
 ---
 
-### 👤 User Profile
-- Dynamic User Profile
-- User Information Management
-- Current Plan Display
-- Storage Usage Display
-- Profile Dropdown
-- Authentication Based UI Updates
+# 🚀 Features
+
+## 🔐 Authentication
+
+* User Registration
+* User Login
+* Password Hashing using bcrypt
+* JWT Based Authentication
+* Protected APIs
+* Persistent Login Sessions
+* React Context Authentication
+* Public & Private Route Protection
+* Secure Logout Flow
 
 ---
 
-### 📊 Dashboard
-- Real User Dashboard
-- Storage Overview
-- Total Files Count
-- Total Folders Count
-- User Storage Tracking
-- Current Plan Information
-- Protected Dashboard Statistics API
+## 👤 User Profile
+
+* Dynamic User Profile
+* Current Plan Display
+* Storage Usage Display
+* Storage Percentage
+* Profile Dropdown
+* Authentication Based UI
 
 ---
 
-### ☁️ Cloud Storage
-- AWS S3 Private Bucket Integration
-- Secure File Upload using Presigned URLs
-- Direct Client to S3 Upload Flow
-- Secure File Download using Temporary URLs
-- File Metadata Management
+## 📊 Dashboard
+
+* Real User Dashboard
+* Storage Overview
+* Total Files Count
+* Total Folders Count
+* User Storage Tracking
+* Current Plan Information
+* Dashboard Statistics API
+* Responsive Dashboard
 
 ---
 
-### 📁 File Management
-- Upload Files
-- Get All User Files
-- Get Single File
-- Delete Files
-- Storage Usage Tracking
-- User Storage Limit Validation
+## ☁️ Cloud Storage
+
+* AWS S3 Private Bucket
+* Secure File Upload using Presigned URLs
+* Direct Client → AWS S3 Upload
+* Secure Temporary Download URLs
+* Secure File Open
+* File Metadata Management
+* 100 MB Free Storage Limit
 
 ---
 
-### 📂 Folder Management
-- Create Folders
-- Nested Folder Structure
-- Parent-Child Folder Relationship
-- Get Folder Contents
-- Folder Based File Organization
-- Recursive Folder Delete
+## 📁 File Management
+
+* Upload Files
+* Open Files
+* Download Files
+* Rename Files
+* Delete Files
+* Permanent Delete
+* Storage Usage Tracking
+* Storage Limit Validation
 
 ---
 
-### 🔗 File Sharing
-- Generate Secure Share Links
-- Random Crypto Token Based Sharing
-- Public File Access Using Share Token
-- Duplicate Share Link Prevention
-- Secure Temporary Download URLs
+## 📂 Folder Management
+
+* Create Folder
+* Rename Folder
+* Delete Folder
+* Nested Folder Structure
+* Parent–Child Folder Relationship
+* Recursive Folder Restore
+* Recursive Folder Delete
 
 ---
 
-### 🔍 Search
-- Search Files
-- Search Folders
-- User Specific Search Results
-- Case Insensitive Search
-- Partial Name Matching
+## 🔗 File Sharing
+
+* Secure Share Links
+* Crypto Token Based Sharing
+* Duplicate Share Link Prevention
+* Public File Access
+* Temporary Download URLs
 
 ---
 
-### 🗑 Trash System
-- Soft Delete Support
-- Trash Based File Removal
-- Automatic Cleanup using Cron Job
-- Permanent AWS S3 Object Deletion
+## 🔍 Search
+
+* Search Files
+* Search Folders
+* User Specific Results
+* Case Insensitive Search
+* Partial Name Matching
 
 ---
 
-## 🛠 Tech Stack
+## 🗑 Trash System
 
-### Frontend
-- React.js
-- React Router DOM
-- Context API
-- Axios
-- Tailwind CSS
-- Framer Motion
-
-### Backend
-- Node.js
-- Express.js
-- MongoDB
-- Mongoose
-
-### Authentication
-- JWT
-- bcrypt
-
-### Cloud Storage
-- AWS S3
-- AWS SDK v3
-- Presigned URLs
-
-### Tools
-- Node Cron
-- Dotenv
-- Git
+* Soft Delete
+* Restore Files
+* Restore Folders
+* Recursive Restore
+* Permanent Delete
+* Empty Trash
+* Automatic Cleanup using Cron Job
+* Permanent AWS S3 Object Deletion
 
 ---
 
-## 📁 Project Structure
+# 🛠 Tech Stack
+
+## Frontend
+
+* React.js
+* React Router DOM
+* Context API
+* Axios
+* Tailwind CSS
+* Framer Motion
+* Lucide React
+
+## Backend
+
+* Node.js
+* Express.js
+* MongoDB
+* Mongoose
+
+## Authentication
+
+* JWT
+* bcrypt
+
+## Cloud
+
+* AWS S3
+* AWS SDK v3
+* Presigned URLs
+
+## Utilities
+
+* Node Cron
+* Dotenv
+* Crypto
+* Git
+
+---
+
+# 📁 Project Structure
 
 ```bash
 Keeply/
@@ -144,71 +170,34 @@ Keeply/
 │   ├── src/
 │   │
 │   ├── api/
-│   │   └── Axios Client
-│   │
+│   ├── assets/
 │   ├── components/
-│   │   ├── Dashboard Components
-│   │   ├── Profile Menu
-│   │   └── UI Components
-│   │
 │   ├── context/
-│   │   └── Auth Context
-│   │
+│   ├── hooks/
+│   ├── pages/
 │   ├── routes/
-│   │   ├── Protected Routes
-│   │   └── Public Routes
-│   │
 │   ├── services/
-│   │   ├── Auth Service
-│   │   └── Dashboard Service
-│   │
+│   ├── utils/
 │   └── App.jsx
 │
-
-
 ├── server/
 │
-├── config/
-│   └── AWS S3 Configuration
-
-├── controllers/
-│   ├── Auth Controller
-│   ├── Dashboard Controller
-│   ├── File Controller
-│   ├── Folder Controller
-│   ├── Share Controller
-│   └── Search Controller
-
-├── middleware/
-│   └── Authentication Middleware
-
-├── models/
-│   ├── User Model
-│   ├── File Model
-│   ├── Folder Model
-│   └── Share Model
-
-├── routes/
-│   ├── Auth Routes
-│   ├── Dashboard Routes
-│   ├── File Routes
-│   ├── Folder Routes
-│   ├── Share Routes
-│   └── Search Routes
-
-├── utils/
-│   ├── S3 Utilities
-│   └── Trash Cleaner
-
-├── server.js
-└── package.json
+│   ├── config/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── routes/
+│   ├── utils/
+│   ├── cron/
+│   ├── server.js
+│   └── package.json
 ```
 
 ---
 
-## 🔐 Environment Variables
+# 🔐 Environment Variables
 
-Create a `.env` file:
+Create a `.env` file
 
 ```env
 PORT=
@@ -230,18 +219,14 @@ FRONTEND_URL=
 
 ---
 
-## 📤 Upload Flow
+# 📤 Upload Flow
 
 ```text
 User Selects File
 
         ↓
 
-Request Presigned Upload URL
-
-        ↓
-
-Backend Authentication
+Authenticate User
 
         ↓
 
@@ -249,15 +234,15 @@ Validate Storage Limit
 
         ↓
 
-Generate AWS Presigned URL
+Generate Presigned Upload URL
 
         ↓
 
-Client Uploads Directly To S3
+Client Uploads Directly To AWS S3
 
         ↓
 
-Save File Metadata In MongoDB
+Store File Metadata
 
         ↓
 
@@ -266,7 +251,7 @@ Update User Storage
 
 ---
 
-## 📥 Download Flow
+# 📥 Download Flow
 
 ```text
 User Requests File
@@ -277,7 +262,7 @@ Validate Ownership
 
         ↓
 
-Fetch s3Key From Database
+Fetch s3Key
 
         ↓
 
@@ -285,15 +270,15 @@ Generate Temporary AWS URL
 
         ↓
 
-Download File Securely
+Download / Open File
 ```
 
 ---
 
-## 🔗 Share Flow
+# 🔗 Share Flow
 
 ```text
-User Creates Share Link
+User Generates Share Link
 
         ↓
 
@@ -301,7 +286,7 @@ Generate Secure Token
 
         ↓
 
-Save Token With File Reference
+Store Share Metadata
 
         ↓
 
@@ -318,7 +303,7 @@ Access Shared File
 
 ---
 
-## 🗑 Delete Flow
+# 🗑 Trash Flow
 
 ```text
 Delete Request
@@ -329,7 +314,11 @@ Move File / Folder To Trash
 
         ↓
 
-Cron Job Cleanup
+Restore
+
+        OR
+
+Permanent Delete
 
         ↓
 
@@ -337,45 +326,60 @@ Delete From AWS S3
 
         ↓
 
-Remove Metadata
+Remove MongoDB Metadata
 ```
 
 ---
 
-## Current Status
+# 📦 Current Status
 
-### Completed ✅
+## ✅ Completed
 
-- Backend Architecture
-- Authentication System
-- JWT Authorization
-- Frontend UI Setup
-- Axios API Layer
-- Auth Context Integration
-- Protected Routing
-- Dynamic User Profile
-- Dashboard Statistics API
-- Real Dashboard Overview
-
-
-### In Progress 🚧
-
-- Nested Folder Integration
-- File Listing Integration
-- AWS S3 Upload Connection
-
-
-### Upcoming 🚀
-
-- Payment Gateway
-- Subscription Plans
-- Deployment
-- Advanced Sharing
+* Authentication System
+* JWT Authorization
+* AWS S3 Integration
+* File Upload
+* File Download
+* File Open
+* File Sharing
+* Folder Management
+* Nested Folders
+* Search System
+* Trash System
+* Recursive Delete
+* Recursive Restore
+* Empty Trash
+* Storage Tracking
+* 100 MB Free Plan
+* Responsive UI
+* Pricing Page
+* Dashboard
+* Landing Page
 
 ---
 
-## Status
+## 🚀 Upcoming (V2)
 
-Full Stack Integration In Progress 🚀
+* Razorpay Subscription
+* Premium Plans
+* Email Notifications
+* Team Collaboration
+* Folder Sharing
+* File Version History
+* File Preview Improvements
 
-Core Authentication & Dashboard Engine Completed ✅
+---
+
+# 👨‍💻 Developer
+
+**Prakhar Shukla**
+
+Full Stack MERN Developer
+
+Built with ❤️ using React, Node.js, MongoDB and AWS S3.
+
+---
+
+# ⭐ Status
+
+**Keeply V1 is feature complete and ready for deployment.**

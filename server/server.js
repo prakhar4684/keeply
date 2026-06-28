@@ -7,6 +7,7 @@ const folderRoutes=require('./routes/folder');
 const shareRoutes=require('./routes/shareRoutes');
 const searchRoutes = require("./routes/searchRoute");
 const dashBoardRoutes = require("./routes/dashBoardRouter");
+const trashRoutes = require("./routes/trash");
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -28,6 +29,7 @@ app.use('/api/folders', folderRoutes);
 app.use('/api/share', shareRoutes);
 app.use("/api/search", searchRoutes);
 app.use('/api/dashboard', dashBoardRoutes);
+app.use('/api/trash', trashRoutes);
 const cron = require("node-cron");
 const cleanTrash = require("./utils/trashCleaner");
 

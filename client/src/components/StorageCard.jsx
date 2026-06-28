@@ -3,11 +3,17 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Zap } from 'lucide-react'
 
-// TODO: connect backend API - storage from user storage API
+// val is in GB
+const fmt = (val) => {
+  if (!val || val <= 0) return '0 MB'
+  if (val < 1) return `${(val * 1024).toFixed(1)} MB`
+  return `${val.toFixed(2)} GB`
+}
+
 export default function StorageCard({ storage }) {
-  const used = storage?.used || 2.4
-  const total = storage?.total || 50
-  const percentage = Math.min((used / total) * 100, 100)
+  const used  = storage?.used  ?? 0   // GB
+  const total = storage?.total ?? 0   // GB
+  const percentage = total > 0 ? Math.min((used / total) * 100, 100) : 0
   const isNearLimit = percentage > 80
 
   return (
@@ -15,15 +21,12 @@ export default function StorageCard({ storage }) {
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Storage</p>
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-          isNearLimit
-            ? 'bg-amber-100 text-amber-700'
-            : 'bg-emerald-100 text-emerald-700'
+          isNearLimit ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
         }`}>
           {percentage.toFixed(0)}%
         </span>
       </div>
 
-      {/* Progress Bar */}
       <div className="h-2 bg-white rounded-full overflow-hidden shadow-inner mb-3">
         <motion.div
           initial={{ width: 0 }}
@@ -38,8 +41,8 @@ export default function StorageCard({ storage }) {
       </div>
 
       <p className="text-sm font-semibold text-gray-700">
-        {used} GB{' '}
-        <span className="font-normal text-gray-400">of {total} GB used</span>
+        {fmt(used)}{' '}
+        <span className="font-normal text-gray-400">of {fmt(total)} used</span>
       </p>
 
       <Link to="/pricing">

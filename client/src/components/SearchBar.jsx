@@ -1,26 +1,77 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, File, Folder, X, Clock, ArrowRight } from 'lucide-react'
-import { dummyFiles, dummyFolders } from '../data/dummyData'
+import { Search, File, Folder, X, ArrowRight, Loader2, AlertTriangle } from 'lucide-react'
+import { searchAll } from '../services/searchService'
 
-// TODO: connect backend API - search endpoint /api/search?q=
-export default function SearchBar({ placeholder = 'Search files and folders...' }) {
+function formatSize(bytes) {
+  if (!bytes) return '—'
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// ── Normalize backend docs (Mongo shape: _id, originalName, size…) into the UI shape ──
+function normalizeResults(data) {
+  const files = (data?.files || []).map(f => ({
+    id: f._id || f.id,
+    name: f.originalName || f.name || 'Untitled',
+    sizeFormatted: f.sizeFormatted || formatSize(f.size),
+    raw: f,
+  }))
+
+  const folders = (data?.folders || []).map(f => ({
+    id: f._id || f.id,
+    name: f.name || 'Untitled',
+    filesCount: f.filesCount ?? f.itemsCount ?? 0,
+    raw: f,
+  }))
+
+  return { files, folders }
+}
+
+// `onSelectFile` / `onSelectFolder` let the parent (e.g. Dashboard) decide what
+// happens on click — open the file, navigate into the folder, etc.
+export default function SearchBar({
+  placeholder = 'Search files and folders...',
+  onSelectFile,
+  onSelectFolder,
+}) {
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
   const [results, setResults] = useState({ files: [], folders: [] })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const inputRef = useRef(null)
   const containerRef = useRef(null)
+  const debounceRef = useRef(null)
 
-  // TODO: replace with debounced API call
+  // ── FIX: debounced real backend search instead of filtering dummy data ──
   useEffect(() => {
-    if (query.trim().length < 1) {
+    const trimmed = query.trim()
+
+    if (trimmed.length < 1) {
       setResults({ files: [], folders: [] })
+      setLoading(false)
+      setError('')
       return
     }
-    const q = query.toLowerCase()
-    const files = dummyFiles.filter(f => f.name.toLowerCase().includes(q)).slice(0, 4)
-    const folders = dummyFolders.filter(f => f.name.toLowerCase().includes(q)).slice(0, 3)
-    setResults({ files, folders })
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setLoading(true)
+        setError('')
+        const data = await searchAll(trimmed)
+        setResults(normalizeResults(data))
+      } catch (err) {
+        setError('Search failed. Please try again.')
+        setResults({ files: [], folders: [] })
+      } finally {
+        setLoading(false)
+      }
+    }, 350) // debounce delay
+
+    return () => clearTimeout(debounceRef.current)
   }, [query])
 
   useEffect(() => {
@@ -36,6 +87,16 @@ export default function SearchBar({ placeholder = 'Search files and folders...' 
   const hasResults = results.files.length > 0 || results.folders.length > 0
   const showDropdown = focused && query.length > 0
 
+  const handleFolderClick = (folder) => {
+    onSelectFolder?.(folder)
+    setFocused(false)
+  }
+
+  const handleFileClick = (file) => {
+    onSelectFile?.(file)
+    setFocused(false)
+  }
+
   return (
     <div ref={containerRef} className="relative w-full max-w-xl">
       <div className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all duration-200 bg-white ${
@@ -43,7 +104,11 @@ export default function SearchBar({ placeholder = 'Search files and folders...' 
           ? 'border-emerald-400 shadow-lg shadow-emerald-100 ring-2 ring-emerald-100'
           : 'border-gray-200 hover:border-gray-300'
       }`}>
-        <Search size={17} className={focused ? 'text-emerald-500' : 'text-gray-400'} />
+        {loading ? (
+          <Loader2 size={17} className="text-emerald-500 animate-spin" />
+        ) : (
+          <Search size={17} className={focused ? 'text-emerald-500' : 'text-gray-400'} />
+        )}
         <input
           ref={inputRef}
           value={query}
@@ -76,7 +141,17 @@ export default function SearchBar({ placeholder = 'Search files and folders...' 
             transition={{ duration: 0.15 }}
             className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
           >
-            {!hasResults ? (
+            {error ? (
+              <div className="px-4 py-8 text-center">
+                <AlertTriangle size={24} className="text-red-300 mx-auto mb-2" />
+                <p className="text-sm text-red-500">{error}</p>
+              </div>
+            ) : loading ? (
+              <div className="px-4 py-8 text-center">
+                <Loader2 size={24} className="text-emerald-400 mx-auto mb-2 animate-spin" />
+                <p className="text-sm text-gray-400">Searching…</p>
+              </div>
+            ) : !hasResults ? (
               <div className="px-4 py-8 text-center">
                 <Search size={28} className="text-gray-300 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">No results for "<span className="font-medium text-gray-700">{query}</span>"</p>
@@ -93,6 +168,7 @@ export default function SearchBar({ placeholder = 'Search files and folders...' 
                       <motion.button
                         key={folder.id}
                         whileHover={{ backgroundColor: '#f9fafb' }}
+                        onClick={() => handleFolderClick(folder)}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
                       >
                         <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -116,6 +192,7 @@ export default function SearchBar({ placeholder = 'Search files and folders...' 
                       <motion.button
                         key={file.id}
                         whileHover={{ backgroundColor: '#f9fafb' }}
+                        onClick={() => handleFileClick(file)}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
                       >
                         <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -130,12 +207,6 @@ export default function SearchBar({ placeholder = 'Search files and folders...' 
                     ))}
                   </div>
                 )}
-                <div className="border-t border-gray-50 mt-1 pt-1 px-4 py-2">
-                  <button className="text-xs text-emerald-600 font-semibold hover:text-emerald-700 flex items-center gap-1">
-                    See all results for "{query}"
-                    <ArrowRight size={12} />
-                  </button>
-                </div>
               </div>
             )}
           </motion.div>
