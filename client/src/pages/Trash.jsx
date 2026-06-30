@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Trash2, RotateCcw, AlertTriangle, File, Folder,
   FileText, Image, Film, Music, Archive,
-  Clock, Info, X, CheckCircle2, ShieldCheck
+  Clock, Info, X, CheckCircle2, ShieldCheck, RefreshCw
 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import EmptyState from '../components/EmptyState'
@@ -217,8 +217,34 @@ export default function Trash() {
     }
   }, [])
 
+  // Initial load + auto-refresh triggers:
+  // 1. Window regains focus (user switched tabs/apps and came back)
+  // 2. Tab becomes visible again (covers some browsers focus doesn't catch)
+  // 3. Custom 'trash-updated' event — dispatch this from anywhere in the
+  //    app right after a file/folder is moved to trash, so this page
+  //    updates instantly without waiting for focus/visibility/manual refresh.
   useEffect(() => {
     loadTrash()
+
+    const handleFocus = () => loadTrash()
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadTrash()
+      }
+    }
+
+    const handleTrashUpdate = () => loadTrash()
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('trash-updated', handleTrashUpdate)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('trash-updated', handleTrashUpdate)
+    }
   }, [loadTrash])
 
   const handleRestore = async (item) => {
@@ -316,17 +342,30 @@ export default function Trash() {
             </div>
           </div>
 
-          {items.length > 0 && (
+          <div className="flex items-center gap-2">
             <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setConfirm({ open: true, type: 'empty', item: null })}
-              className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-bold rounded-xl transition-all border border-red-100"
+              whileHover={{ scale: 1.05, rotate: 90 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={loadTrash}
+              disabled={loading}
+              className="flex items-center justify-center w-9 h-9 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl transition-all border border-gray-100 disabled:opacity-50"
+              title="Refresh trash"
             >
-              <Trash2 size={15} />
-              Empty Trash
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </motion.button>
-          )}
+
+            {items.length > 0 && (
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setConfirm({ open: true, type: 'empty', item: null })}
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-bold rounded-xl transition-all border border-red-100"
+              >
+                <Trash2 size={15} />
+                Empty Trash
+              </motion.button>
+            )}
+          </div>
         </motion.header>
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
